@@ -12,20 +12,18 @@ public class PlayerMovement : MonoBehaviour
     [Header("Saut")]
     public float jumpForce = 7f; 
     public float groundCheckDistance = 1.1f; 
-    public LayerMask groundLayer; 
+    public LayerMask groundLayer;
+    
+    [Tooltip("Temps de CHUTE (secondes) avant de déclencher une roulade.")]
+    public float hardLandThreshold = 0.8f; // (C'est votre valeur)
     
     [Header("Buffer")]
     public float groundedBufferDuration = 0.1f;
     private float groundedBufferTimer; 
 
     [Header("Pente")]
-    [Tooltip("La force qui pousse le joueur le long de la pente.")]
     public float slopeSlideForce = 15f; 
-    
-    // NOUVELLE VARIABLE
-    [Header("Logique de Barrière")]
-    [Tooltip("Faites glisser l'objet 'SlopeExitWall' de votre scène ici.")]
-    public GameObject slopeWallPrefab; // Le mur à activer
+    public GameObject slopeWallPrefab; 
 
     // Références
     private Rigidbody rb;
@@ -37,6 +35,10 @@ public class PlayerMovement : MonoBehaviour
     // États
     public bool isGrounded { get; private set; }
     public bool IsInSlopeZone { get; private set; } = false;
+    
+    // Cette variable est lue par PlayerAnimator
+    public bool isLandingHard { get; private set; } = false; 
+    private float airTime = 0f; // Compteur de temps en l'air
 
     void Start()
     {
@@ -49,22 +51,42 @@ public class PlayerMovement : MonoBehaviour
 
     void Update()
     {
-        // Si on fait une glissade manuelle, on force "isGrounded"
+        // On réinitialise 'isLandingHard' à chaque frame
+        isLandingHard = false;
+        
         if (parkourController.isManuallySliding)
         {
             isGrounded = true;
+            airTime = 0f; 
         }
-        else // Détection normale du sol
+        else 
         {
             bool onGroundNow = Physics.Raycast(transform.position, Vector3.down, out RaycastHit groundHit, groundCheckDistance, groundLayer);
 
-            if (onGroundNow)
+            if (onGroundNow) // Si on est au sol
             {
+                // On vient JUSTE d'atterrir
+                if (!isGrounded && airTime > hardLandThreshold)
+                {
+                    isLandingHard = true; // Déclenche la roulade !
+                }
+                
                 groundedBufferTimer = groundedBufferDuration;
+                airTime = 0f; 
             }
-            else
+            else // --- ON EST EN L'AIR ---
             {
                 groundedBufferTimer -= Time.deltaTime;
+                
+                // On ne compte le temps en l'air QUE SI on TOMBE (vitesse Y négative)
+                if (rb.velocity.y < 0)
+                {
+                    airTime += Time.deltaTime; 
+                }
+                else
+                {
+                    airTime = 0f; // Si on MONTE (saut), on ne compte pas
+                }
             }
             isGrounded = groundedBufferTimer > 0;
         }
@@ -81,57 +103,43 @@ public class PlayerMovement : MonoBehaviour
     {
         float horizontalInput = playerInput.HorizontalInput;
         
-        // PRIORITÉ 1: EST-ON SUR UNE PENTE ?
         if (IsInSlopeZone && isGrounded)
         {
-            // OUI. L'INPUT EST IGNORÉ.
-            // On laisse les 'AddForce' (plus bas) gérer 100% du mouvement.
+            // Logique de pente (ignore l'input)
         }
-        // PRIORITÉ 2: PAS SUR UNE PENTE (Mouvement normal)
         else
         {
+            // Logique de mouvement normal
             Vector3 newVelocity = rb.velocity;
             if (Mathf.Abs(horizontalInput) > 0.1f)
             {
-                // Le joueur contrôle
                 newVelocity.x = horizontalInput * moveSpeed;
             }
-            else // Pas d'input, pas de pente -> Freiner
+            else 
             {
                 newVelocity.x = Mathf.Lerp(rb.velocity.x, 0, Time.fixedDeltaTime * 10f);
             }
-            // On applique la vélocité SI on n'est PAS sur la pente
             rb.velocity = new Vector3(newVelocity.x, rb.velocity.y, rb.velocity.z);
         }
 
-        // GESTION DE LA PHYSIQUE DE PENTE (SÉPARÉMENT)
         if (IsInSlopeZone && isGrounded)
         {
-            // Applique la force de glisse (vers la droite)
             rb.AddForce(Vector3.right * slopeSlideForce, ForceMode.Force); 
-            
-            // Applique la force pour coller au sol
             rb.AddForce(Vector3.down * 10f, ForceMode.Force);
         }
     }
     
-    // --- FONCTION MODIFIÉE ---
     void OnTriggerEnter(Collider other)
     {
-        // 1. Logique de la Zone de Pente
         if (other.gameObject.layer == LayerMask.NameToLayer("SlopeZone"))
         {
             IsInSlopeZone = true;
         }
         
-        // 2. NOUVELLE LOGIQUE : Activation de la Barrière
-        // Si on touche l'objet qui a le Tag "SlopeExit"
         if (other.CompareTag("SlopeExit"))
         {
-            // On vérifie que le mur a bien été assigné
             if (slopeWallPrefab != null)
             {
-                // On active le mur !
                 slopeWallPrefab.SetActive(true);
             }
         }
@@ -139,7 +147,6 @@ public class PlayerMovement : MonoBehaviour
 
     void OnTriggerExit(Collider other)
     {
-        // Si on sort d'un objet sur le layer "SlopeZone"
         if (other.gameObject.layer == LayerMask.NameToLayer("SlopeZone"))
         {
             IsInSlopeZone = false;

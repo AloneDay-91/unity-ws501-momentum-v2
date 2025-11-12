@@ -32,7 +32,6 @@ public class PlayerAnimator : MonoBehaviour
         facingLeft = Quaternion.Euler(0, -90, 0);
     }
 
-    // --- CETTE FONCTION EST CORRIGÉE ---
     void Update()
     {
         if (animator == null) return;
@@ -43,21 +42,23 @@ public class PlayerAnimator : MonoBehaviour
         // 2. État "au sol"
         animator.SetBool("isGrounded", playerMovement.isGrounded);
         
-        // --- LOGIQUE DE GLISSADE CORRIGÉE ---
-        // Ce script ne gère plus que la glissade de PENTE (automatique).
-        // La glissade MANUELLE est gérée par le ParkourController avec un Trigger.
-        
+        // 3. Logique de Glissade
         bool physicsSlide = playerMovement.IsInSlopeZone;
         animator.SetBool("isSliding", physicsSlide);
+        
+        // --- LA CORRECTION EST ICI ---
+        // On lit le booléen de PlayerMovement et on le transmet à l'Animator
+        animator.SetBool("isLandingHard", playerMovement.isLandingHard);
+        // (On ne déclenche plus de Trigger)
         // --- FIN DE LA CORRECTION ---
         
-        // 4. Action "Sauter"
+        // 5. Action "Sauter"
         if (playerInput.JumpBufferActive && playerMovement.isGrounded && !scanner.CanVault)
         {
             animator.SetTrigger("doJump");
         }
         
-        // 5. Logique de Retournement (Flip)
+        // 6. Logique de Retournement (Flip)
         HandleFlipping();
     }
     
