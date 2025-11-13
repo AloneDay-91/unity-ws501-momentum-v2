@@ -32,6 +32,15 @@ public class PlayerAnimator : MonoBehaviour
         facingLeft = Quaternion.Euler(0, -90, 0);
     }
 
+    // Fonction publique appelée par PlayerMovement
+    public void TriggerJump()
+    {
+        if (animator != null)
+        {
+            animator.SetTrigger("doJump");
+        }
+    }
+
     void Update()
     {
         if (animator == null) return;
@@ -39,24 +48,17 @@ public class PlayerAnimator : MonoBehaviour
         // 1. Vitesse de Mouvement
         animator.SetFloat("moveSpeed", Mathf.Abs(playerInput.HorizontalInput));
         
-        // 2. État "au sol"
-        animator.SetBool("isGrounded", playerMovement.isGrounded);
+        // 2. État "au sol" (lit la version "faussée" pour l'animation)
+        animator.SetBool("isGrounded", playerMovement.isGrounded_ForAnimator);
         
-        // 3. Logique de Glissade
+        // 3. Logique de Glissade (Pente uniquement)
         bool physicsSlide = playerMovement.IsInSlopeZone;
         animator.SetBool("isSliding", physicsSlide);
         
-        // --- LA CORRECTION EST ICI ---
-        // On lit le booléen de PlayerMovement et on le transmet à l'Animator
+        // 4. Atterrissage brutal (Roulade)
         animator.SetBool("isLandingHard", playerMovement.isLandingHard);
-        // (On ne déclenche plus de Trigger)
-        // --- FIN DE LA CORRECTION ---
         
-        // 5. Action "Sauter"
-        if (playerInput.JumpBufferActive && playerMovement.isGrounded && !scanner.CanVault)
-        {
-            animator.SetTrigger("doJump");
-        }
+        // 5. Action "Sauter" (Logique déplacée dans PlayerMovement)
         
         // 6. Logique de Retournement (Flip)
         HandleFlipping();

@@ -20,6 +20,10 @@ public class ParkourController : MonoBehaviour
     public float vaultDuration = 1.17f; 
     public float vaultHopHeight = 0.8f; 
 
+    [Header("Réglages de Gameplay")]
+    [Tooltip("La durée (en secondes) pendant laquelle la glissade est bloquée après une roulade.")]
+    public float slideLockoutDuration = 0.5f; 
+
     // Références
     private PlayerInput playerInput;
     private EnvironmentScanner scanner;
@@ -36,6 +40,7 @@ public class ParkourController : MonoBehaviour
     // États
     private bool isVaulting = false; 
     public bool isManuallySliding { get; private set; } = false; 
+    private bool isSlideLocked = false; 
 
     void Start()
     {
@@ -59,16 +64,32 @@ public class ParkourController : MonoBehaviour
             playerInput.ConsumeJumpBuffer(); 
             StartCoroutine(PerformVault());
         }
-        // 2. Logique de Glissade Manuelle
-        else if (playerInput.SlidePressed && !isManuallySliding && !isVaulting && !playerMovement.IsInSlopeZone)
+        
+        // 2. Logique de Glissade Manuelle (utilise 'isGrounded_ForAnimator')
+        else if (playerInput.SlidePressed && !isManuallySliding && !isVaulting && !playerMovement.IsInSlopeZone && playerMovement.isGrounded_ForAnimator && !isSlideLocked)
         {
             isManuallySliding = true; 
             StartCoroutine(PerformSlide());
         }
     }
 
+    // Fonction publique appelée par PlayerMovement
+    public void LockSlideAfterRoll()
+    {
+        StartCoroutine(SlideLockoutCoroutine());
+    }
+
+    // Coroutine de verrouillage
+    private IEnumerator SlideLockoutCoroutine()
+    {
+        isSlideLocked = true; 
+        yield return new WaitForSeconds(slideLockoutDuration); 
+        isSlideLocked = false;
+    }
+
     IEnumerator PerformSlide()
     {
+        //isManuallySliding = true; // (Déplacé dans Update)
         //playerStats.AddScoreForAction("Slide");
         
         if (animator != null)
@@ -82,6 +103,33 @@ public class ParkourController : MonoBehaviour
         
         yield return new WaitForSeconds(slideDuration);
         
+        // --- NOUVELLE LOGIQUE DE SÉCURITÉ ---
+        // On vérifie la VÉRITÉ PHYSIQUE avant de se relever
+        if (playerMovement.IsPhysicallyGrounded)
+        {
+            RestoreCollider();
+        }
+        else
+        {
+            // On est en l'air ! On attend de toucher le sol.
+            StartCoroutine(WaitForGroundToStopSlide());
+        }
+    }
+    
+    IEnumerator WaitForGroundToStopSlide()
+    {
+        // On attend (boucle) jusqu'à ce que le joueur touche VRAIMENT le sol
+        while (!playerMovement.IsPhysicallyGrounded)
+        {
+            yield return null; // Attend la prochaine frame
+        }
+        
+        // Le joueur a touché le sol. On peut maintenant se relever.
+        RestoreCollider();
+    }
+    
+    void RestoreCollider()
+    {
         playerCollider.direction = 1; 
         playerCollider.height = originalColliderHeight;
         playerCollider.center = originalColliderCenter;
@@ -102,11 +150,8 @@ public class ParkourController : MonoBehaviour
         playerMovement.enabled = false;
         rb.useGravity = false;
         
-        // --- LA CORRECTION EST ICI ---
-        // On arrête la vélocité AVANT de passer en Kinematic
         rb.velocity = Vector3.zero;
         rb.isKinematic = true; 
-        // --- FIN DE LA CORRECTION ---
         
         float timer = 0f;
         while (timer < vaultDuration)

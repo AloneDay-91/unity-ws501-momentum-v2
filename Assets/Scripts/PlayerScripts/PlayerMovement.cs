@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections; // Important pour les Coroutines
 
 [RequireComponent(typeof(Rigidbody))] 
 [RequireComponent(typeof(PlayerInput))]
@@ -15,11 +16,14 @@ public class PlayerMovement : MonoBehaviour
     public LayerMask groundLayer;
     
     [Tooltip("Temps de CHUTE (secondes) avant de déclencher une roulade.")]
-    public float hardLandThreshold = 0.8f; // (C'est votre valeur)
+    public float hardLandThreshold = 0.8f; 
     
     [Header("Buffer")]
     public float groundedBufferDuration = 0.1f;
     private float groundedBufferTimer; 
+    [Tooltip("Durée (en secondes) pendant laquelle la roulade est active.")]
+    public float hardLandDuration = 0.2f;
+    private float hardLandTimer = 0f;
 
     [Header("Pente")]
     public float slopeSlideForce = 15f; 
@@ -31,14 +35,16 @@ public class PlayerMovement : MonoBehaviour
     private EnvironmentScanner scanner;
     private CapsuleCollider playerCollider; 
     private ParkourController parkourController; 
+    private PlayerAnimator playerAnimator; 
 
     // États
-    public bool isGrounded { get; private set; }
     public bool IsInSlopeZone { get; private set; } = false;
-    
-    // Cette variable est lue par PlayerAnimator
     public bool isLandingHard { get; private set; } = false; 
-    private float airTime = 0f; // Compteur de temps en l'air
+    private float airTime = 0f; 
+    public bool isGrounded_ForAnimator { get; private set; } 
+    public bool isGrounded_Buffered { get; private set; }
+    public bool IsPhysicallyGrounded { get; private set; } 
+    private bool isStunned = false; // <-- NOUVEAU
 
     void Start()
     {
@@ -47,65 +53,75 @@ public class PlayerMovement : MonoBehaviour
         scanner = GetComponent<EnvironmentScanner>(); 
         playerCollider = GetComponent<CapsuleCollider>(); 
         parkourController = GetComponent<ParkourController>(); 
+        playerAnimator = GetComponent<PlayerAnimator>(); 
     }
 
     void Update()
     {
-        // On réinitialise 'isLandingHard' à chaque frame
-        isLandingHard = false;
+        // Si on est étourdi, on ne peut pas mettre à jour la logique
+        if (isStunned)
+        {
+            isLandingHard = false;
+            return;
+        }
+
+        if (hardLandTimer > 0) { hardLandTimer -= Time.deltaTime; }
+        isLandingHard = hardLandTimer > 0;
         
+        bool onGroundNow = Physics.Raycast(transform.position, Vector3.down, out RaycastHit groundHit, groundCheckDistance, groundLayer);
+        IsPhysicallyGrounded = onGroundNow;
+
         if (parkourController.isManuallySliding)
         {
-            isGrounded = true;
+            isGrounded_ForAnimator = true;
+            airTime = 0f; 
+        }
+        else
+        {
+            isGrounded_ForAnimator = onGroundNow;
+        }
+
+        if (onGroundNow) 
+        {
+            if (!isGrounded_Buffered && airTime > hardLandThreshold)
+            {
+                hardLandTimer = hardLandDuration; 
+                parkourController.LockSlideAfterRoll();
+            }
+            groundedBufferTimer = groundedBufferDuration;
             airTime = 0f; 
         }
         else 
         {
-            bool onGroundNow = Physics.Raycast(transform.position, Vector3.down, out RaycastHit groundHit, groundCheckDistance, groundLayer);
-
-            if (onGroundNow) // Si on est au sol
-            {
-                // On vient JUSTE d'atterrir
-                if (!isGrounded && airTime > hardLandThreshold)
-                {
-                    isLandingHard = true; // Déclenche la roulade !
-                }
-                
-                groundedBufferTimer = groundedBufferDuration;
-                airTime = 0f; 
-            }
-            else // --- ON EST EN L'AIR ---
-            {
-                groundedBufferTimer -= Time.deltaTime;
-                
-                // On ne compte le temps en l'air QUE SI on TOMBE (vitesse Y négative)
-                if (rb.velocity.y < 0)
-                {
-                    airTime += Time.deltaTime; 
-                }
-                else
-                {
-                    airTime = 0f; // Si on MONTE (saut), on ne compte pas
-                }
-            }
-            isGrounded = groundedBufferTimer > 0;
+            groundedBufferTimer -= Time.deltaTime; 
+            if (rb.velocity.y < 0) { airTime += Time.deltaTime; }
+            else { airTime = 0f; }
         }
+        isGrounded_Buffered = groundedBufferTimer > 0;
         
-        // Logique de Saut
-        if (playerInput.JumpBufferActive && isGrounded && !scanner.CanVault)
+        if (playerInput.JumpBufferActive && isGrounded_Buffered && !scanner.CanVault && !parkourController.isManuallySliding)
         {
             rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
+            if (playerAnimator != null) { playerAnimator.TriggerJump(); }
             playerInput.ConsumeJumpBuffer();
         }
     }
 
     void FixedUpdate()
     {
+        // Si on est étourdi, on ne peut pas bouger
+        if (isStunned)
+        {
+            // On freine le joueur
+            rb.velocity = new Vector3(Mathf.Lerp(rb.velocity.x, 0, Time.fixedDeltaTime * 10f), rb.velocity.y, rb.velocity.z);
+            return; // On ignore tout le reste
+        }
+        
         float horizontalInput = playerInput.HorizontalInput;
         
-        if (IsInSlopeZone && isGrounded)
+        if (IsInSlopeZone && isGrounded_ForAnimator)
         {
-            // Logique de pente (ignore l'input)
+            // Logique de pente
         }
         else
         {
@@ -122,13 +138,40 @@ public class PlayerMovement : MonoBehaviour
             rb.velocity = new Vector3(newVelocity.x, rb.velocity.y, rb.velocity.z);
         }
 
-        if (IsInSlopeZone && isGrounded)
+        if (IsInSlopeZone && isGrounded_ForAnimator)
         {
             rb.AddForce(Vector3.right * slopeSlideForce, ForceMode.Force); 
             rb.AddForce(Vector3.down * 10f, ForceMode.Force);
         }
     }
     
+    // --- NOUVELLE FONCTION PUBLIQUE ---
+    public void ApplyStun(float duration)
+    {
+        // On ne peut pas être étourdi si on est déjà étourdi ou en action
+        if (isStunned || parkourController.isManuallySliding) return;
+
+        StartCoroutine(StunCoroutine(duration));
+    }
+
+    // --- NOUVELLE COROUTINE ---
+    private IEnumerator StunCoroutine(float duration)
+    {
+        isStunned = true;
+        
+        // (Optionnel) Dit à l'Animator de jouer l'animation "touché"
+        if (playerAnimator != null)
+        {
+            // Vous devrez créer un Trigger "doStun" dans l'Animator
+            // playerAnimator.animator.SetTrigger("doStun"); 
+        }
+
+        yield return new WaitForSeconds(duration);
+
+        isStunned = false;
+    }
+    
+    // --- (Le reste du script : Triggers, OnDrawGizmos, etc. ne change pas) ---
     void OnTriggerEnter(Collider other)
     {
         if (other.gameObject.layer == LayerMask.NameToLayer("SlopeZone"))
