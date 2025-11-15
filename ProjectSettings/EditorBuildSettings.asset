@@ -12,6 +12,9 @@ EditorBuildSettings:
     path: Assets/Scenes/InputTester.unity
     guid: d006b734cd6e72b4cb3ee94f4598919c
   - enabled: 1
+    path: Assets/Scenes/MainMenu.unity
+    guid: d1f5e7d50033e461e97a02dfe1c7aa6f
+  - enabled: 1
     path: Assets/Scenes/main.unity
     guid: 44878c14106834688b4d145400312ca2
   m_configObjects: {}

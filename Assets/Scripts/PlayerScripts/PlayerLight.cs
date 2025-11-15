@@ -5,30 +5,26 @@ using UnityEngine;
 public class PlayerLight : MonoBehaviour
 {
     [Header("Références")]
-    [Tooltip("La lumière enfant (Point Light) qui sert de 'glow'.")]
+    [Tooltip("La lumière enfant (Spot Light) qui sert de 'glow'.")]
     public Light playerGlowLight;
 
     [Header("Réglages du Glow (Nuit)")]
-    public float maxGlowIntensity = 2.0f;
+    public float maxGlowIntensity = 15.0f; // (Vous pouvez garder une valeur élevée)
     public float drainRate = 5.0f; 
     [Tooltip("Définit comment l'intensité de la lumière réagit au remplissage de la barre.")]
     public AnimationCurve intensityCurve;
     
-    // --- NOUVELLES VARIABLES ---
     [Header("Réglages de la Gêne (Jour)")]
-    [Tooltip("La portée de l'attaque de Gêne. Réglez-la comme votre 'Vault Check Distance' !")]
-    public float stunRange = 3.0f; // Distance de détection
-    [Tooltip("La durée (en secondes) avant de pouvoir réutiliser la Gêne.")]
-    public float stunCooldown = 5.0f; // 5 secondes de cooldown
-    [Tooltip("Cochez le Layer 'Player' que vous avez créé.")]
-    public LayerMask opponentLayer; // Le calque pour trouver l'adversaire
+    public float stunRange = 3.0f; 
+    public float stunCooldown = 5.0f; 
+    public LayerMask opponentLayer; 
     
-    private float stunCooldownTimer = 0f; // Le chronomètre
-    // --- FIN ---
-
+    private float stunCooldownTimer = 0f; 
     private PlayerStats playerStats;
     private PlayerInput playerInput; 
     private bool isLightActive = false; 
+
+    // (Les variables pour la rotation ont été supprimées)
 
     void Awake()
     {
@@ -38,25 +34,36 @@ public class PlayerLight : MonoBehaviour
         {
             Debug.LogError("La lumière 'PlayerGlow' n'est pas assignée !");
         }
+        // (L'initialisation des rotations est supprimée)
     }
 
-    // ... (OnEnable, OnDisable, Start ne changent pas) ...
+    // S'abonne à l'événement du jour
     void OnEnable() { GameCycleManager.OnDayStart += TurnOffLight; }
     void OnDisable() { GameCycleManager.OnDayStart -= TurnOffLight; }
-    void Start() { TurnOffLight(); }
 
+    void Start()
+    {
+        TurnOffLight(); // S'assure que la lumière est éteinte au démarrage
+    }
+    
     void TurnOnLight()
     {
-        if (playerGlowLight != null) { playerGlowLight.gameObject.SetActive(true); isLightActive = true; }
+        if (playerGlowLight != null)
+        {
+            playerGlowLight.gameObject.SetActive(true); 
+            isLightActive = true; 
+        }
     }
 
     void TurnOffLight()
     {
-        if (playerGlowLight != null) { playerGlowLight.gameObject.SetActive(false); }
+        if (playerGlowLight != null)
+        {
+            playerGlowLight.gameObject.SetActive(false); 
+        }
         isLightActive = false;
     }
 
-    // --- CETTE FONCTION EST MODIFIÉE ---
     void Update()
     {
         // On fait descendre le minuteur du cooldown
@@ -68,18 +75,14 @@ public class PlayerLight : MonoBehaviour
         // 1. Gérer l'activation (Toggle)
         if (playerInput.LightTogglePressed)
         {
-            // --- LOGIQUE DE JOUR (GÊNE) ---
-            if (GameCycleManager.Instance.IsDay)
+            if (GameCycleManager.Instance.IsDay) // --- LOGIQUE DE JOUR (GÊNE) ---
             {
-                // On vérifie si le cooldown est terminé
                 if (stunCooldownTimer <= 0)
                 {
-                    // On tente la Gêne (avec la nouvelle vérification de distance)
                     AttemptStun();
                 }
             }
-            // --- LOGIQUE DE NUIT (LUMIÈRE) ---
-            else
+            else // --- LOGIQUE DE NUIT (LUMIÈRE) ---
             {
                 if (!isLightActive)
                 {
@@ -92,7 +95,9 @@ public class PlayerLight : MonoBehaviour
             }
         }
 
-        // 2. Gérer la consommation (Lumière de nuit)
+        // (La logique 'HandleLightFlipping' est supprimée)
+
+        // 2. Gérer la consommation
         if (isLightActive)
         {
             playerStats.DrainLuminescence(drainRate * Time.deltaTime);
@@ -108,32 +113,21 @@ public class PlayerLight : MonoBehaviour
         }
     }
     
-    // --- NOUVELLE FONCTION ---
+    // (La fonction HandleLightFlipping est supprimée)
+    
     void AttemptStun()
     {
-        // On crée une "bulle" de détection autour de ce joueur
         Collider[] hits = Physics.OverlapSphere(transform.position, stunRange, opponentLayer);
 
-        // On vérifie si on a touché quelque chose
         if (hits.Length > 0)
         {
-            // On vérifie que ce n'est pas NOUS-MÊME
             foreach (Collider hit in hits)
             {
-                // Si l'objet touché a un PlayerInput...
                 PlayerInput hitInput = hit.GetComponent<PlayerInput>();
                 if (hitInput != null && hitInput.playerID != playerInput.playerID)
                 {
-                    // C'est l'adversaire !
-                    Debug.Log("Joueur " + playerInput.playerID + " a GÊNÉ Joueur " + hitInput.playerID);
-
-                    // 1. On appelle le système de Gêne
                     InterferenceSystem.Instance.AttemptInterference(playerInput.playerID);
-
-                    // 2. On lance le Cooldown
                     stunCooldownTimer = stunCooldown;
-
-                    // 3. On a trouvé notre cible, on sort de la boucle
                     break; 
                 }
             }
