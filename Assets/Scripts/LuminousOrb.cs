@@ -13,6 +13,9 @@ public class LuminousOrb : MonoBehaviour
     [Tooltip("Système de particules permanent autour de l'orbe")]
     public ParticleSystem orbParticles;
 
+    [Tooltip("Objet Sphere à désactiver lors de la collecte")]
+    public GameObject sphereObject;
+
     [Header("Juice Effects")]
     [Tooltip("Activer le camera shake lors de la collecte")]
     public bool enableCameraShake = true;
@@ -52,6 +55,16 @@ public class LuminousOrb : MonoBehaviour
         if (orbParticles == null)
         {
             orbParticles = GetComponentInChildren<ParticleSystem>();
+        }
+
+        // Cherche la Sphere si pas assignée
+        if (sphereObject == null)
+        {
+            Transform sphereTransform = transform.Find("OrbParticles/Sphere");
+            if (sphereTransform != null)
+            {
+                sphereObject = sphereTransform.gameObject;
+            }
         }
 
         // Ajoute ObjectPulse si pas déjà présent (pour l'effet de pulsation)
@@ -101,6 +114,12 @@ public class LuminousOrb : MonoBehaviour
         {
             orbParticles.Play();
         }
+
+        // On active la Sphere si elle existe
+        if (sphereObject != null)
+        {
+            sphereObject.SetActive(true);
+        }
     }
 
     void HideOrb()
@@ -114,6 +133,12 @@ public class LuminousOrb : MonoBehaviour
         if (orbParticles != null)
         {
             orbParticles.Stop();
+        }
+
+        // On désactive la Sphere si elle existe
+        if (sphereObject != null)
+        {
+            sphereObject.SetActive(false);
         }
     }
 
