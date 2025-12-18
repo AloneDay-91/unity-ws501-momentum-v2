@@ -664,8 +664,8 @@ MonoBehaviour:
   gameSceneName: main
   playButtonName: P1_B1
   enableArcadeInput: 1
-  menuMusic: {fileID: 8300000, guid: 8274e938429074dab9a46f6b141f5ff5, type: 3}
-  musicVolume: 0.3
+  menuMusic: {fileID: 8300000, guid: dfab4c5eca230499684e9a63bcb4987e, type: 3}
+  musicVolume: 0.5
   musicPitch: 1
 --- !u!4 &1063117867
 Transform:

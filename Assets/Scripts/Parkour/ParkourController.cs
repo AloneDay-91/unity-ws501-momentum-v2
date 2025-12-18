@@ -29,9 +29,10 @@ public class ParkourController : MonoBehaviour
     private EnvironmentScanner scanner;
     private CapsuleCollider playerCollider;
     private PlayerMovement playerMovement;
-    private Rigidbody rb; 
+    private Rigidbody rb;
     //private PlayerStats playerStats;
-    private Animator animator; 
+    private Animator animator;
+    private PlayerAudioController audioController; 
 
     // Valeurs de base
     private float originalColliderHeight;
@@ -48,10 +49,11 @@ public class ParkourController : MonoBehaviour
         scanner = GetComponent<EnvironmentScanner>();
         playerCollider = GetComponent<CapsuleCollider>();
         playerMovement = GetComponent<PlayerMovement>();
-        rb = GetComponent<Rigidbody>(); 
+        rb = GetComponent<Rigidbody>();
         //playerStats = GetComponent<PlayerStats>();
-        animator = GetComponentInChildren<Animator>(); 
-        
+        animator = GetComponentInChildren<Animator>();
+        audioController = GetComponent<PlayerAudioController>();
+
         originalColliderHeight = playerCollider.height;
         originalColliderCenter = playerCollider.center;
     }
@@ -141,7 +143,13 @@ public class ParkourController : MonoBehaviour
     {
         isVaulting = true;
         //playerStats.AddScoreForAction("Vault");
-        
+
+        // Joue le son de vault
+        if (audioController != null)
+        {
+            audioController.PlayVaultSound();
+        }
+
         if (animator != null)
         {
             animator.SetTrigger("doVault");

@@ -33,9 +33,10 @@ public class PlayerMovement : MonoBehaviour
     private Rigidbody rb;
     private PlayerInput playerInput;
     private EnvironmentScanner scanner;
-    private CapsuleCollider playerCollider; 
-    private ParkourController parkourController; 
-    private PlayerAnimator playerAnimator; 
+    private CapsuleCollider playerCollider;
+    private ParkourController parkourController;
+    private PlayerAnimator playerAnimator;
+    private PlayerAudioController audioController; 
 
     // États
     public bool IsInSlopeZone { get; private set; } = false;
@@ -50,10 +51,11 @@ public class PlayerMovement : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
         playerInput = GetComponent<PlayerInput>();
-        scanner = GetComponent<EnvironmentScanner>(); 
-        playerCollider = GetComponent<CapsuleCollider>(); 
-        parkourController = GetComponent<ParkourController>(); 
-        playerAnimator = GetComponent<PlayerAnimator>(); 
+        scanner = GetComponent<EnvironmentScanner>();
+        playerCollider = GetComponent<CapsuleCollider>();
+        parkourController = GetComponent<ParkourController>();
+        playerAnimator = GetComponent<PlayerAnimator>();
+        audioController = GetComponent<PlayerAudioController>();
     }
 
     void Update()
@@ -103,6 +105,7 @@ public class PlayerMovement : MonoBehaviour
         {
             rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
             if (playerAnimator != null) { playerAnimator.TriggerJump(); }
+            if (audioController != null) { audioController.PlayJumpSound(); }
             playerInput.ConsumeJumpBuffer();
         }
     }
