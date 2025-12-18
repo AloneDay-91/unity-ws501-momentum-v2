@@ -247,7 +247,7 @@ MonoBehaviour:
   m_PreserveMeshAssetOnDestroy: 0
   assetGuid: 
   m_Mesh: {fileID: 0}
-  m_VersionIndex: 4206
+  m_VersionIndex: 4224
   m_IsSelectable: 1
   m_SelectedFaces: 
   m_SelectedEdges: []
@@ -5688,7 +5688,7 @@ MonoBehaviour:
   m_PreserveMeshAssetOnDestroy: 0
   assetGuid: 
   m_Mesh: {fileID: 0}
-  m_VersionIndex: 3992
+  m_VersionIndex: 4010
   m_IsSelectable: 1
   m_SelectedFaces: 
   m_SelectedEdges: []
@@ -6378,7 +6378,7 @@ MonoBehaviour:
   m_PreserveMeshAssetOnDestroy: 0
   assetGuid: 
   m_Mesh: {fileID: 0}
-  m_VersionIndex: 4360
+  m_VersionIndex: 4378
   m_IsSelectable: 1
   m_SelectedFaces: 
   m_SelectedEdges: []
@@ -9962,7 +9962,7 @@ MonoBehaviour:
   m_PreserveMeshAssetOnDestroy: 0
   assetGuid: 
   m_Mesh: {fileID: 0}
-  m_VersionIndex: 3866
+  m_VersionIndex: 3884
   m_IsSelectable: 1
   m_SelectedFaces: 
   m_SelectedEdges: []
@@ -10303,7 +10303,7 @@ GameObject:
   - component: {fileID: 1855805827469505703}
   - component: {fileID: 5627795923283829086}
   m_Layer: 0
-  m_Name: LuminousOrb (3)
+  m_Name: LuminousOrb
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -22259,7 +22259,7 @@ MonoBehaviour:
   m_PreserveMeshAssetOnDestroy: 0
   assetGuid: 
   m_Mesh: {fileID: 0}
-  m_VersionIndex: 3631
+  m_VersionIndex: 3649
   m_IsSelectable: 1
   m_SelectedFaces: 
   m_SelectedEdges: []
@@ -32002,7 +32002,7 @@ GameObject:
   - component: {fileID: 9097761574165353275}
   - component: {fileID: 4304349120896782914}
   m_Layer: 0
-  m_Name: LuminousOrb (2)
+  m_Name: LuminousOrb
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -39556,7 +39556,7 @@ GameObject:
   - component: {fileID: 749737118303417934}
   - component: {fileID: 1741163989627784243}
   m_Layer: 7
-  m_Name: Obstacle_Slide (1)
+  m_Name: Obstacle_Slide
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -40850,7 +40850,7 @@ MonoBehaviour:
   m_PreserveMeshAssetOnDestroy: 0
   assetGuid: 
   m_Mesh: {fileID: 0}
-  m_VersionIndex: 4248
+  m_VersionIndex: 4266
   m_IsSelectable: 1
   m_SelectedFaces: 
   m_SelectedEdges: []
@@ -42170,7 +42170,7 @@ MonoBehaviour:
   m_PreserveMeshAssetOnDestroy: 0
   assetGuid: 
   m_Mesh: {fileID: 0}
-  m_VersionIndex: 3926
+  m_VersionIndex: 3944
   m_IsSelectable: 1
   m_SelectedFaces: 
   m_SelectedEdges: []
