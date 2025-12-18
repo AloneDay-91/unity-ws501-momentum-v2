@@ -6890,7 +6890,7 @@ PrefabInstance:
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 0}
+    m_TransformParent: {fileID: 6508093251260903812}
     m_Modifications:
     - target: {fileID: 381172152691521198, guid: b99090f612609491e83f9d22e1d019e2, type: 3}
       propertyPath: m_LocalPosition.x
@@ -6910,15 +6910,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 381172152691521198, guid: b99090f612609491e83f9d22e1d019e2, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 381172152691521198, guid: b99090f612609491e83f9d22e1d019e2, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 381172152691521198, guid: b99090f612609491e83f9d22e1d019e2, type: 3}
       propertyPath: m_LocalRotation.z
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 381172152691521198, guid: b99090f612609491e83f9d22e1d019e2, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -6941,6 +6941,11 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: b99090f612609491e83f9d22e1d019e2, type: 3}
+--- !u!4 &371701114 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 381172152691521198, guid: b99090f612609491e83f9d22e1d019e2, type: 3}
+  m_PrefabInstance: {fileID: 371701113}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &383159226
 GameObject:
   m_ObjectHideFlags: 0
@@ -42285,7 +42290,7 @@ PrefabInstance:
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 0}
+    m_TransformParent: {fileID: 6508093251260903812}
     m_Modifications:
     - target: {fileID: 381172152691521198, guid: b99090f612609491e83f9d22e1d019e2, type: 3}
       propertyPath: m_LocalPosition.x
@@ -42305,15 +42310,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 381172152691521198, guid: b99090f612609491e83f9d22e1d019e2, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 381172152691521198, guid: b99090f612609491e83f9d22e1d019e2, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 381172152691521198, guid: b99090f612609491e83f9d22e1d019e2, type: 3}
       propertyPath: m_LocalRotation.z
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 381172152691521198, guid: b99090f612609491e83f9d22e1d019e2, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -42336,6 +42341,11 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: b99090f612609491e83f9d22e1d019e2, type: 3}
+--- !u!4 &1551865012 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 381172152691521198, guid: b99090f612609491e83f9d22e1d019e2, type: 3}
+  m_PrefabInstance: {fileID: 1551865011}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1555835161
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -60670,7 +60680,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3280243512719519039, guid: 09ad1123911eb4433a9d169e043f88b1, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3313891187902139328, guid: 09ad1123911eb4433a9d169e043f88b1, type: 3}
+      propertyPath: m_Name
+      value: Obstacle_Vault
       objectReference: {fileID: 0}
     - target: {fileID: 3916627634392127049, guid: 09ad1123911eb4433a9d169e043f88b1, type: 3}
       propertyPath: m_Mesh
@@ -60680,6 +60694,14 @@ PrefabInstance:
       propertyPath: m_Mesh
       value: 
       objectReference: {fileID: 717262061}
+    - target: {fileID: 4502058203906343341, guid: 09ad1123911eb4433a9d169e043f88b1, type: 3}
+      propertyPath: m_Name
+      value: Obstacle_Vault
+      objectReference: {fileID: 0}
+    - target: {fileID: 4990893671418421707, guid: 09ad1123911eb4433a9d169e043f88b1, type: 3}
+      propertyPath: m_Name
+      value: Obstacle_Slide
+      objectReference: {fileID: 0}
     - target: {fileID: 5948146665705496102, guid: 09ad1123911eb4433a9d169e043f88b1, type: 3}
       propertyPath: m_Mesh
       value: 
@@ -60793,7 +60815,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2404725088144709215, guid: dfd7a7d5a641e412ba0d5c13484c2473, type: 3}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2501061241247342251, guid: dfd7a7d5a641e412ba0d5c13484c2473, type: 3}
       propertyPath: m_Mesh
@@ -60811,6 +60833,10 @@ PrefabInstance:
       propertyPath: m_Mesh
       value: 
       objectReference: {fileID: 1951466731}
+    - target: {fileID: 2843047185901638510, guid: dfd7a7d5a641e412ba0d5c13484c2473, type: 3}
+      propertyPath: m_Name
+      value: Obstacle_Slide
+      objectReference: {fileID: 0}
     - target: {fileID: 3038406104128709805, guid: dfd7a7d5a641e412ba0d5c13484c2473, type: 3}
       propertyPath: m_Mesh
       value: 
@@ -61009,6 +61035,12 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 6844310251610429621, guid: dfd7a7d5a641e412ba0d5c13484c2473, type: 3}
       insertIndex: 30
       addedObject: {fileID: 1390476377}
+    - targetCorrespondingSourceObject: {fileID: 6844310251610429621, guid: dfd7a7d5a641e412ba0d5c13484c2473, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1551865012}
+    - targetCorrespondingSourceObject: {fileID: 6844310251610429621, guid: dfd7a7d5a641e412ba0d5c13484c2473, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 371701114}
     - targetCorrespondingSourceObject: {fileID: 2355836589729918009, guid: dfd7a7d5a641e412ba0d5c13484c2473, type: 3}
       insertIndex: 1
       addedObject: {fileID: 1189802139}
@@ -61038,5 +61070,3 @@ SceneRoots:
   - {fileID: 828175595}
   - {fileID: 1885381648}
   - {fileID: 182140883}
-  - {fileID: 1551865011}
-  - {fileID: 371701113}
