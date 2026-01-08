@@ -21,6 +21,9 @@ public class MovingPlatform : MonoBehaviour
     [Range(0f, 10f)]
     public float pauseDuration = 1f;
 
+    [Header("Audio")]
+    public AudioSource moveAudioSource;
+
     [Header("Timing")]
     [Tooltip("Délai avant de commencer le mouvement")]
     [Range(0f, 10f)]
@@ -79,6 +82,7 @@ public class MovingPlatform : MonoBehaviour
         // Délai initial
         if (!hasStarted)
         {
+            StopMoveSound();
             delayTimer -= Time.deltaTime;
             if (delayTimer <= 0f)
             {
@@ -90,6 +94,7 @@ public class MovingPlatform : MonoBehaviour
         // Pause aux extrémités
         if (isPaused)
         {
+            StopMoveSound();
             pauseTimer -= Time.deltaTime;
             if (pauseTimer <= 0f)
             {
@@ -102,7 +107,24 @@ public class MovingPlatform : MonoBehaviour
         }
 
         // Déplacement
+        PlayMoveSound();
         MovePlatform();
+    }
+
+    void PlayMoveSound()
+    {
+        if (moveAudioSource != null && !moveAudioSource.isPlaying)
+        {
+            moveAudioSource.Play();
+        }
+    }
+
+    void StopMoveSound()
+    {
+        if (moveAudioSource != null && moveAudioSource.isPlaying)
+        {
+            moveAudioSource.Stop();
+        }
     }
 
     void MovePlatform()
