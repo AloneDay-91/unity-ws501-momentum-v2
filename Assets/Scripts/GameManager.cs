@@ -109,6 +109,13 @@ public class GameManager : MonoBehaviour
         {
             timer.StartTimer();
         }
+
+        // Start score tracking
+        PlayerScoreTracker[] allScoreTrackers = FindObjectsOfType<PlayerScoreTracker>();
+        foreach (PlayerScoreTracker tracker in allScoreTrackers)
+        {
+            tracker.StartTracking();
+        }
     }
 
     /// <summary>
