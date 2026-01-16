@@ -149,11 +149,18 @@ public class LuminousOrb : MonoBehaviour
         // donc cette fonction ne peut pas être appelée. C'est parfait.
 
         PlayerStats playerStats = other.GetComponent<PlayerStats>();
+        PlayerInput playerInput = other.GetComponent<PlayerInput>();
 
         if (playerStats != null)
         {
             // On donne la luminescence au joueur
             playerStats.AddLuminescence(luminescenceAmount);
+
+            // Ajoute un collectible au score du joueur
+            if (ScoreManager.Instance != null && playerInput != null)
+            {
+                ScoreManager.Instance.AddCollectible(playerInput.playerID);
+            }
 
             // --- EFFETS DE JUICE ---
 
