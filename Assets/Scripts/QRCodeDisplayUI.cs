@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using UnityEngine.Networking;
 using System.Collections;
 using TMPro;
+using Anatidae;
 
 /// <summary>
 /// Affiche les QR codes pour que les joueurs rejoignent la partie
@@ -173,7 +174,8 @@ public class QRCodeDisplayUI : MonoBehaviour
             }
         }
 
-        // Charge directement l'image PNG depuis l'API
+        // Utilise UnityWebRequestTexture directement (fonctionne si le serveur a les headers CORS)
+        // Le proxy Anatidae corrompt les données binaires, donc on charge directement
         using (UnityWebRequest request = UnityWebRequestTexture.GetTexture(qrCodeUrl))
         {
             yield return request.SendWebRequest();
@@ -185,7 +187,7 @@ public class QRCodeDisplayUI : MonoBehaviour
 
                 if (showDebug)
                 {
-                    Debug.Log("QRCodeDisplayUI: QR code chargé avec succès");
+                    Debug.Log($"QRCodeDisplayUI: QR code chargé avec succès ({texture.width}x{texture.height})");
                 }
             }
             else

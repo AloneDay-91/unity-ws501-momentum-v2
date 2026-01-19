@@ -1,9 +1,9 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Text;
 using UnityEngine;
 using UnityEngine.Networking;
+using Anatidae;
 
 [Serializable]
 public class ScoreData
@@ -61,13 +61,10 @@ public class GameAPIClient : MonoBehaviour
         };
 
         string jsonData = JsonUtility.ToJson(request);
-        byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonData);
 
-        using (UnityWebRequest www = new UnityWebRequest(API_BASE_URL + "/api/game", "POST"))
+        // Utilise AnatidaeProxyWebRequest pour contourner CORS en WebGL
+        using (UnityWebRequest www = AnatidaeProxyWebRequest.Post(API_BASE_URL + "/api/game", jsonData, "application/json"))
         {
-            www.uploadHandler = new UploadHandlerRaw(bodyRaw);
-            www.downloadHandler = new DownloadHandlerBuffer();
-            www.SetRequestHeader("Content-Type", "application/json");
             www.SetRequestHeader("Authorization", "Bearer " + authManager.GetToken());
 
             yield return www.SendWebRequest();

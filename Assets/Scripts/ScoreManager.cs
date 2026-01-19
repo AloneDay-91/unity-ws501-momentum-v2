@@ -2,18 +2,15 @@ using UnityEngine;
 using UnityEngine.Networking;
 using System.Collections;
 using System.Collections.Generic;
-using System.Text;
+using Anatidae;
 
 /// <summary>
 /// Gère le scoring des joueurs et la sauvegarde des scores via l'API Next.js
+/// Utilise /api/game/end pour terminer la partie et sauvegarder tous les scores
 /// </summary>
 public class ScoreManager : MonoBehaviour
 {
     public static ScoreManager Instance { get; private set; }
-
-    [Header("API Configuration")]
-    [Tooltip("URL de base de l'API Next.js")]
-    public string apiBaseUrl = "http://localhost:3000";
 
     [Header("Score Settings")]
     [Tooltip("Nom de la carte actuelle (pour différencier les scores par carte)")]
@@ -33,6 +30,7 @@ public class ScoreManager : MonoBehaviour
 
     // Scores des joueurs
     private Dictionary<int, PlayerScore> playerScores = new Dictionary<int, PlayerScore>();
+    private bool hasEndedGame = false;
 
     [System.Serializable]
     public class PlayerScore
@@ -41,8 +39,9 @@ public class ScoreManager : MonoBehaviour
         public float distanceTraveled;
         public float survivalTime;
         public int collectiblesCollected;
-        public bool hasFinished;
-        public bool hasBeenSaved;
+        public bool hasFinished;      // A terminé le parcours (victoire)
+        public bool isEliminated;     // A été éliminé
+        public bool isGameOver;       // La partie est finie pour ce joueur (fini OU éliminé)
         public int totalScore;
     }
 
@@ -78,7 +77,8 @@ public class ScoreManager : MonoBehaviour
                 survivalTime = 0f,
                 collectiblesCollected = 0,
                 hasFinished = false,
-                hasBeenSaved = false,
+                isEliminated = false,
+                isGameOver = false,
                 totalScore = 0
             };
 
@@ -150,21 +150,26 @@ public class ScoreManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Marque un joueur comme ayant terminé le parcours
+    /// Marque un joueur comme ayant terminé le parcours (victoire)
     /// </summary>
     public void OnPlayerFinished(int playerID)
     {
         if (playerScores.ContainsKey(playerID))
         {
-            playerScores[playerID].hasFinished = true;
+            PlayerScore score = playerScores[playerID];
+            score.hasFinished = true;
+            score.isGameOver = true;
+
+            // Calcule le score final
+            CalculateScore(playerID);
 
             if (showDebug)
             {
-                Debug.Log($"ScoreManager: Joueur {playerID} a terminé le parcours!");
+                Debug.Log($"ScoreManager: Joueur {playerID} a terminé le parcours! Score: {score.totalScore}");
             }
 
-            // Sauvegarde le score
-            StartCoroutine(SavePlayerScore(playerID));
+            // Vérifie si tous les joueurs ont terminé
+            CheckAndEndGame();
         }
     }
 
@@ -175,25 +180,71 @@ public class ScoreManager : MonoBehaviour
     {
         if (playerScores.ContainsKey(playerID))
         {
+            PlayerScore score = playerScores[playerID];
+            score.isEliminated = true;
+            score.isGameOver = true;
+
+            // Calcule le score final
+            CalculateScore(playerID);
+
             if (showDebug)
             {
-                Debug.Log($"ScoreManager: Joueur {playerID} a été éliminé");
+                Debug.Log($"ScoreManager: Joueur {playerID} a été éliminé! Score: {score.totalScore}");
             }
 
-            // Sauvegarde le score même si éliminé
-            StartCoroutine(SavePlayerScore(playerID));
+            // Vérifie si tous les joueurs ont terminé
+            CheckAndEndGame();
         }
     }
 
     /// <summary>
-    /// Classe pour sérialiser les données de score en JSON
+    /// Vérifie si tous les joueurs ont terminé et envoie les scores à l'API
+    /// </summary>
+    private void CheckAndEndGame()
+    {
+        // Vérifie si la partie a déjà été terminée
+        if (hasEndedGame)
+        {
+            return;
+        }
+
+        // Vérifie si tous les joueurs ont terminé
+        bool allPlayersFinished = true;
+        foreach (var score in playerScores.Values)
+        {
+            if (!score.isGameOver)
+            {
+                allPlayersFinished = false;
+                break;
+            }
+        }
+
+        if (allPlayersFinished)
+        {
+            if (showDebug)
+            {
+                Debug.Log("ScoreManager: Tous les joueurs ont terminé! Envoi des scores à l'API...");
+            }
+
+            hasEndedGame = true;
+            StartCoroutine(SendScoresToAPI());
+        }
+    }
+
+    /// <summary>
+    /// Classes pour sérialiser les données en JSON
     /// </summary>
     [System.Serializable]
-    private class ScoreData
+    private class EndGameRequest
     {
-        public string playerName;
-        public int playerID;
-        public string mapName;
+        public string sessionId;
+        public PlayerScoreData[] scores;
+    }
+
+    [System.Serializable]
+    private class PlayerScoreData
+    {
+        public int playerNumber;
         public int totalScore;
         public float distanceTraveled;
         public float survivalTime;
@@ -202,103 +253,77 @@ public class ScoreManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Sauvegarde le score d'un joueur via l'API Next.js
+    /// Envoie tous les scores à l'API /api/game/end
     /// </summary>
-    private IEnumerator SavePlayerScore(int playerID)
+    private IEnumerator SendScoresToAPI()
     {
-        if (!playerScores.ContainsKey(playerID))
+        // Récupère le sessionId depuis GameSessionManager
+        string sessionId = null;
+        string apiBaseUrl = "http://localhost:3000";
+
+        if (GameSessionManager.Instance != null)
         {
+            sessionId = GameSessionManager.Instance.sessionId;
+            apiBaseUrl = GameSessionManager.Instance.apiBaseUrl.Trim();
+        }
+
+        if (string.IsNullOrEmpty(sessionId))
+        {
+            Debug.LogWarning("ScoreManager: Pas de sessionId, impossible de sauvegarder les scores via /api/game/end");
             yield break;
         }
 
-        PlayerScore score = playerScores[playerID];
+        // Prépare les données des scores
+        List<PlayerScoreData> scoresList = new List<PlayerScoreData>();
 
-        // Évite de sauvegarder plusieurs fois
-        if (score.hasBeenSaved)
+        foreach (var kvp in playerScores)
         {
-            yield break;
+            PlayerScore score = kvp.Value;
+            scoresList.Add(new PlayerScoreData
+            {
+                playerNumber = score.playerID,
+                totalScore = score.totalScore,
+                distanceTraveled = score.distanceTraveled,
+                survivalTime = score.survivalTime,
+                collectiblesCollected = score.collectiblesCollected,
+                hasFinished = score.hasFinished
+            });
         }
 
-        // Calcule le score final
-        int finalScore = CalculateScore(playerID);
-
-        // Récupère le pseudo du joueur depuis PlayerNameManager
-        string playerName = "Player " + playerID;
-        if (PlayerNameManager.Instance != null)
+        // Crée la requête
+        EndGameRequest request = new EndGameRequest
         {
-            playerName = PlayerNameManager.Instance.GetPlayerName(playerID);
-        }
+            sessionId = sessionId,
+            scores = scoresList.ToArray()
+        };
+
+        string jsonData = JsonUtility.ToJson(request);
+        string url = $"{apiBaseUrl}/api/game/end";
 
         if (showDebug)
         {
-            Debug.Log($"ScoreManager: Sauvegarde du score pour {playerName} = {finalScore}");
+            Debug.Log($"ScoreManager: Envoi des scores à {url}");
+            Debug.Log($"ScoreManager: Données: {jsonData}");
         }
 
-        // Prépare les données à envoyer
-        ScoreData scoreData = new ScoreData
+        // Utilise AnatidaeProxyWebRequest pour contourner CORS en WebGL
+        using (UnityWebRequest webRequest = AnatidaeProxyWebRequest.Post(url, jsonData, "application/json"))
         {
-            playerName = playerName,
-            playerID = playerID,
-            mapName = currentMapName,
-            totalScore = finalScore,
-            distanceTraveled = score.distanceTraveled,
-            survivalTime = score.survivalTime,
-            collectiblesCollected = score.collectiblesCollected,
-            hasFinished = score.hasFinished
-        };
+            yield return webRequest.SendWebRequest();
 
-        // Convertit en JSON
-        string jsonData = JsonUtility.ToJson(scoreData);
-
-        // Envoie à l'API
-        string url = $"{apiBaseUrl}/api/scores";
-
-        using (UnityWebRequest request = new UnityWebRequest(url, "POST"))
-        {
-            byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonData);
-            request.uploadHandler = new UploadHandlerRaw(bodyRaw);
-            request.downloadHandler = new DownloadHandlerBuffer();
-            request.SetRequestHeader("Content-Type", "application/json");
-
-            yield return request.SendWebRequest();
-
-            if (request.result == UnityWebRequest.Result.Success)
+            if (webRequest.result == UnityWebRequest.Result.Success)
             {
                 if (showDebug)
                 {
-                    Debug.Log($"ScoreManager: Score sauvegardé avec succès pour {playerName}!");
+                    Debug.Log($"ScoreManager: Scores sauvegardés avec succès!");
+                    Debug.Log($"ScoreManager: Réponse: {webRequest.downloadHandler.text}");
                 }
-                score.hasBeenSaved = true;
             }
             else
             {
-                Debug.LogError($"ScoreManager: Erreur lors de la sauvegarde du score - {request.error}");
+                Debug.LogError($"ScoreManager: Erreur lors de la sauvegarde des scores - {webRequest.error}");
+                Debug.LogError($"ScoreManager: Réponse: {webRequest.downloadHandler.text}");
             }
-        }
-
-        // Vérifie si tous les joueurs ont terminé
-        CheckAllPlayersFinished();
-    }
-
-    /// <summary>
-    /// Vérifie si tous les joueurs ont terminé (fini ou éliminé)
-    /// </summary>
-    private void CheckAllPlayersFinished()
-    {
-        bool allFinished = true;
-        foreach (var score in playerScores.Values)
-        {
-            if (!score.hasBeenSaved)
-            {
-                allFinished = false;
-                break;
-            }
-        }
-
-        if (allFinished && showDebug)
-        {
-            Debug.Log("ScoreManager: Tous les joueurs ont terminé!");
-            // Ici tu peux afficher un écran de fin de partie global
         }
     }
 
@@ -324,5 +349,19 @@ public class ScoreManager : MonoBehaviour
             return playerScores[playerID];
         }
         return null;
+    }
+
+    /// <summary>
+    /// Réinitialise les scores (à appeler au début d'une nouvelle partie)
+    /// </summary>
+    public void ResetScores()
+    {
+        playerScores.Clear();
+        hasEndedGame = false;
+
+        if (showDebug)
+        {
+            Debug.Log("ScoreManager: Scores réinitialisés");
+        }
     }
 }

@@ -214,38 +214,26 @@ public class LaserWall : MonoBehaviour
 
         // Récupère le PlayerInput
         PlayerInput playerInput = player.GetComponent<PlayerInput>();
+        int playerID = playerInput != null ? playerInput.playerID : 1;
 
-        // Notifie le ScoreManager de l'élimination (sauvegarde le score)
-        if (ScoreManager.Instance != null && playerInput != null)
+        // Récupère le score depuis le ScoreManager AVANT de notifier l'élimination
+        int finalScore = 0;
+        if (ScoreManager.Instance != null)
         {
-            ScoreManager.Instance.OnPlayerEliminated(playerInput.playerID);
+            finalScore = ScoreManager.Instance.CalculateScore(playerID);
         }
 
-        // Notifie l'élimination
+        // Notifie l'élimination (événement statique)
         OnPlayerEliminated?.Invoke(player);
 
         // Désactive le joueur
         player.SetActive(false);
 
-        // Affiche le GameOverPanel via GameManager
+        // Notifie le GameManager de l'élimination
+        // GameManager va ensuite notifier ScoreManager
         if (GameManager.Instance != null)
         {
-            // Récupère le nom du joueur
-            string playerName = player.name;
-            if (playerInput != null)
-            {
-                playerName = $"Player {playerInput.playerID}";
-            }
-
-            // Récupère le score depuis le ScoreManager
-            int finalScore = 0;
-            if (ScoreManager.Instance != null && playerInput != null)
-            {
-                finalScore = ScoreManager.Instance.GetPlayerScore(playerInput.playerID);
-            }
-
-            // Affiche l'écran de game over
-            GameManager.Instance.OnGameFinished(playerName, finalScore);
+            GameManager.Instance.OnPlayerEliminated(playerID, finalScore);
         }
     }
 

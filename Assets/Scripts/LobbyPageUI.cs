@@ -37,8 +37,17 @@ public class LobbyPageUI : MonoBehaviour
 
     void OnEnable()
     {
+        // S'abonne à l'événement de démarrage de partie
+        GameSessionManager.OnGameStarted += OnGameStarted;
+
         // Rafraîchit l'affichage quand la page s'active
         UpdateDisplay();
+    }
+
+    void OnDisable()
+    {
+        // Se désabonne de l'événement
+        GameSessionManager.OnGameStarted -= OnGameStarted;
     }
 
     void Start()
@@ -133,7 +142,32 @@ public class LobbyPageUI : MonoBehaviour
 
         if (showDebug)
         {
-            Debug.Log("LobbyPageUI: Démarrage de la partie...");
+            Debug.Log("LobbyPageUI: Démarrage de la partie via l'API...");
+        }
+
+        // Désactive le bouton pendant le chargement
+        if (startGameButton != null)
+        {
+            startGameButton.interactable = false;
+        }
+
+        if (startButtonText != null)
+        {
+            startButtonText.text = "Démarrage...";
+        }
+
+        // Appelle l'API pour démarrer la partie
+        GameSessionManager.Instance.StartGame(gameSceneName);
+    }
+
+    /// <summary>
+    /// Appelé quand l'API confirme que la partie a démarré
+    /// </summary>
+    private void OnGameStarted()
+    {
+        if (showDebug)
+        {
+            Debug.Log("LobbyPageUI: Partie démarrée! Chargement de la scène...");
         }
 
         // Charge la scène de jeu

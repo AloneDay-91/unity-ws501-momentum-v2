@@ -1,8 +1,8 @@
 using System;
 using System.Collections;
-using System.Text;
 using UnityEngine;
 using UnityEngine.Networking;
+using Anatidae;
 
 [Serializable]
 public class AnonymousAuthRequest
@@ -74,14 +74,10 @@ public class AuthManager : MonoBehaviour
         };
 
         string jsonData = JsonUtility.ToJson(request);
-        byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonData);
 
-        using (UnityWebRequest www = new UnityWebRequest(API_BASE_URL + "/api/unity/auth", "POST"))
+        // Utilise AnatidaeProxyWebRequest pour contourner CORS en WebGL
+        using (UnityWebRequest www = AnatidaeProxyWebRequest.Post(API_BASE_URL + "/api/unity/auth", jsonData, "application/json"))
         {
-            www.uploadHandler = new UploadHandlerRaw(bodyRaw);
-            www.downloadHandler = new DownloadHandlerBuffer();
-            www.SetRequestHeader("Content-Type", "application/json");
-
             yield return www.SendWebRequest();
 
             if (www.result == UnityWebRequest.Result.Success)

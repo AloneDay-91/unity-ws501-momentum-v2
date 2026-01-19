@@ -1,54 +1,78 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 
+/// <summary>
+/// Zone de mort (chute dans le vide, etc.)
+/// Élimine le joueur qui entre en contact
+/// </summary>
 public class DeathZone : MonoBehaviour
 {
-    public GameObject gameOverPanel; // Assign the Game Over UI Panel in the inspector
-    public GameObject firstSelectedButton; // Assign the button to be selected first (e.g., RestartButton)
-    public PlayerInput playerInput; // Assign the Player's Input script in the inspector
+    [Header("Legacy (optionnel - utilisé si GameManager n'existe pas)")]
+    public GameObject gameOverPanel;
+    public GameObject firstSelectedButton;
+
+    [Header("Debug")]
+    public bool showDebug = true;
 
     private void OnTriggerEnter(Collider other)
     {
-        Debug.Log("Trigger entered by: " + other.name + " with tag: " + other.tag);
+        if (showDebug)
+        {
+            Debug.Log($"DeathZone: Trigger entered by {other.name} with tag {other.tag}");
+        }
+
         if (other.CompareTag("Player"))
         {
-            // Stop the player's timer
-            PlayerTimer playerTimer = other.GetComponent<PlayerTimer>();
-            if (playerTimer != null)
-            {
-                playerTimer.StopTimer();
-            }
+            EliminatePlayer(other.gameObject);
+        }
+    }
 
-            Debug.Log("Player entered DeathZone. Activating Game Over panel...");
+    private void EliminatePlayer(GameObject player)
+    {
+        // Récupère le PlayerInput pour avoir l'ID du joueur
+        PlayerInput playerInput = player.GetComponent<PlayerInput>();
+        int playerID = playerInput != null ? playerInput.playerID : 1;
+
+        if (showDebug)
+        {
+            Debug.Log($"DeathZone: Joueur {playerID} éliminé (chute dans le vide)");
+        }
+
+        // Stop the player's timer
+        PlayerTimer playerTimer = player.GetComponent<PlayerTimer>();
+        if (playerTimer != null)
+        {
+            playerTimer.StopTimer();
+        }
+
+        // Récupère le score depuis le ScoreManager
+        int finalScore = 0;
+        if (ScoreManager.Instance != null)
+        {
+            finalScore = ScoreManager.Instance.CalculateScore(playerID);
+        }
+
+        // Désactive le joueur
+        player.SetActive(false);
+
+        // Utilise le nouveau système GameManager
+        if (GameManager.Instance != null)
+        {
+            // Notifie le GameManager (qui gère l'overlay individuel + GameOverPanel final)
+            GameManager.Instance.OnPlayerEliminated(playerID, finalScore);
+        }
+        else
+        {
+            // Fallback: ancien système (si GameManager n'existe pas)
             if (gameOverPanel != null)
             {
                 gameOverPanel.SetActive(true);
-
-                // Disable player input and pause the game
-                if (playerInput != null)
-                {
-                    playerInput.enabled = false;
-                }
-                else
-                {
-                    Debug.LogError("Player Input script is not assigned in the DeathZone script!");
-                }
                 Time.timeScale = 0f;
 
-
-                // Set the first button to be selected for controller navigation
                 if (firstSelectedButton != null)
                 {
                     EventSystem.current.SetSelectedGameObject(firstSelectedButton);
                 }
-                else
-                {
-                    Debug.LogError("First Selected Button is not assigned in the DeathZone script!");
-                }
-            }
-            else
-            {
-                Debug.LogError("Game Over Panel is not assigned in the DeathZone script!");
             }
         }
     }

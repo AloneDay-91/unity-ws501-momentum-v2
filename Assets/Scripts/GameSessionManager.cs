@@ -2,17 +2,18 @@ using UnityEngine;
 using UnityEngine.Networking;
 using System.Collections;
 using System;
+using Anatidae;
 
 /// <summary>
 /// Gère la session de jeu avec l'API Next.js
-/// Crée une session, récupère les QR codes et poll pour les pseudos
+/// Utilise AnatidaeProxyWebRequest pour contourner les erreurs CORS en WebGL
 /// </summary>
 public class GameSessionManager : MonoBehaviour
 {
     public static GameSessionManager Instance { get; private set; }
 
     [Header("API Configuration")]
-    [Tooltip("URL de base de l'API Next.js")]
+    [Tooltip("URL de base de l'API Next.js (VPS)")]
     public string apiBaseUrl = "http://localhost:3000";
 
     [Tooltip("Intervalle de polling en secondes")]
@@ -91,17 +92,18 @@ public class GameSessionManager : MonoBehaviour
 
     private IEnumerator CreateSessionCoroutine()
     {
-        string url = $"{apiBaseUrl}/api/game/session";
+        // Nettoie l'URL de base (enlève les espaces)
+        string cleanBaseUrl = apiBaseUrl.Trim();
+        string url = $"{cleanBaseUrl}/api/game/session";
 
         if (showDebug)
         {
             Debug.Log($"GameSession: Création de session via {url}");
         }
 
-        using (UnityWebRequest request = UnityWebRequest.PostWwwForm(url, ""))
+        // Utilise AnatidaeProxyWebRequest pour contourner CORS en WebGL
+        using (UnityWebRequest request = AnatidaeProxyWebRequest.Post(url, "{}", "application/json"))
         {
-            request.SetRequestHeader("Content-Type", "application/json");
-
             yield return request.SendWebRequest();
 
             if (request.result == UnityWebRequest.Result.Success)
@@ -205,9 +207,11 @@ public class GameSessionManager : MonoBehaviour
 
     private IEnumerator FetchPlayersData()
     {
-        string url = $"{apiBaseUrl}/api/game/players?sessionId={sessionId}";
+        string cleanBaseUrl = apiBaseUrl.Trim();
+        string url = $"{cleanBaseUrl}/api/game/players?sessionId={sessionId}";
 
-        using (UnityWebRequest request = UnityWebRequest.Get(url))
+        // Utilise AnatidaeProxyWebRequest pour contourner CORS en WebGL
+        using (UnityWebRequest request = AnatidaeProxyWebRequest.Get(url))
         {
             yield return request.SendWebRequest();
 
@@ -291,6 +295,95 @@ public class GameSessionManager : MonoBehaviour
             else
             {
                 Debug.LogWarning($"GameSession: Erreur polling - {request.error}");
+            }
+        }
+    }
+
+    // Événement déclenché quand la partie démarre officiellement
+    public static event System.Action OnGameStarted;
+
+    /// <summary>
+    /// Démarre la partie en appelant /api/game/start
+    /// À appeler quand les deux joueurs sont prêts et qu'on veut lancer le jeu
+    /// </summary>
+    public void StartGame(string mapName = "default")
+    {
+        if (string.IsNullOrEmpty(sessionId))
+        {
+            Debug.LogError("GameSession: Impossible de démarrer - pas de sessionId");
+            return;
+        }
+
+        if (!bothPlayersReady)
+        {
+            Debug.LogWarning("GameSession: Les deux joueurs doivent être prêts pour démarrer");
+            return;
+        }
+
+        StartCoroutine(StartGameCoroutine(mapName));
+    }
+
+    [System.Serializable]
+    private class StartGameRequest
+    {
+        public string sessionId;
+        public string mapName;
+    }
+
+    [System.Serializable]
+    private class StartGameResponse
+    {
+        public bool success;
+        public string message;
+        public string error;
+    }
+
+    private IEnumerator StartGameCoroutine(string mapName)
+    {
+        string cleanBaseUrl = apiBaseUrl.Trim();
+        string url = $"{cleanBaseUrl}/api/game/start";
+
+        StartGameRequest requestData = new StartGameRequest
+        {
+            sessionId = sessionId,
+            mapName = mapName
+        };
+
+        string jsonData = JsonUtility.ToJson(requestData);
+
+        if (showDebug)
+        {
+            Debug.Log($"GameSession: Démarrage de la partie via {url}");
+        }
+
+        // Utilise AnatidaeProxyWebRequest pour contourner CORS en WebGL
+        using (UnityWebRequest request = AnatidaeProxyWebRequest.Post(url, jsonData, "application/json"))
+        {
+            yield return request.SendWebRequest();
+
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                string responseText = request.downloadHandler.text;
+                StartGameResponse response = JsonUtility.FromJson<StartGameResponse>(responseText);
+
+                if (response.success)
+                {
+                    if (showDebug)
+                    {
+                        Debug.Log("GameSession: Partie démarrée avec succès!");
+                    }
+
+                    OnGameStarted?.Invoke();
+                }
+                else
+                {
+                    Debug.LogError($"GameSession: Échec du démarrage - {response.error}");
+                }
+            }
+            else
+            {
+                Debug.LogError($"GameSession: Erreur réseau - {request.error}");
+                Debug.LogError($"GameSession: Réponse - {request.downloadHandler.text}");
             }
         }
     }
