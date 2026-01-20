@@ -3,7 +3,6 @@ using UnityEngine.UI;
 using UnityEngine.Networking;
 using System.Collections;
 using TMPro;
-using Anatidae;
 
 /// <summary>
 /// Affiche les QR codes pour que les joueurs rejoignent la partie
@@ -33,6 +32,9 @@ public class QRCodeDisplayUI : MonoBehaviour
     [Tooltip("Panel contenant les QR codes")]
     public GameObject qrCodePanel;
 
+    [Tooltip("Bouton pour revenir au menu précédent")]
+    public Button backButton;
+
     [Header("QR Code Settings")]
     [Tooltip("Taille du QR code en pixels (utilisé uniquement pour l'affichage)")]
     public int qrCodeSize = 300;
@@ -54,6 +56,12 @@ public class QRCodeDisplayUI : MonoBehaviour
         GameSessionManager.OnPlayer2Joined += OnPlayer2Joined;
         GameSessionManager.OnBothPlayersReady += OnBothPlayersReady;
 
+        // --- NOUVEAU : Setup du bouton retour ---
+        if (backButton != null)
+        {
+            backButton.onClick.AddListener(OnBackButtonClicked);
+        }
+        
         // Réinitialise l'affichage quand la page s'active
         if (startGameButton != null)
         {
@@ -88,6 +96,12 @@ public class QRCodeDisplayUI : MonoBehaviour
         GameSessionManager.OnPlayer1Joined -= OnPlayer1Joined;
         GameSessionManager.OnPlayer2Joined -= OnPlayer2Joined;
         GameSessionManager.OnBothPlayersReady -= OnBothPlayersReady;
+
+        // --- NOUVEAU : Nettoyage du bouton retour ---
+        if (backButton != null)
+        {
+            backButton.onClick.RemoveListener(OnBackButtonClicked);
+        }   
     }
 
     private void OnSessionCreated()
@@ -105,6 +119,11 @@ public class QRCodeDisplayUI : MonoBehaviour
         }
 
         isInitialized = true;
+    }
+
+    private IEnumerator LoadCoroutine(IEnumerator enumerator)
+    {
+        yield return enumerator;
     }
 
     private void OnPlayer1Joined(string pseudo)
@@ -174,9 +193,7 @@ public class QRCodeDisplayUI : MonoBehaviour
             }
         }
 
-        // Utilise UnityWebRequestTexture directement (fonctionne si le serveur a les headers CORS)
-        // Le proxy Anatidae corrompt les données binaires, donc on charge directement
-        Debug.Log($"QRCodeDisplayUI: Tentative de chargement de l'URL: {qrCodeUrl}"); // LOG AJOUTÉ
+        // Charge directement l'image PNG depuis l'API
         using (UnityWebRequest request = UnityWebRequestTexture.GetTexture(qrCodeUrl))
         {
             yield return request.SendWebRequest();
@@ -188,14 +205,12 @@ public class QRCodeDisplayUI : MonoBehaviour
 
                 if (showDebug)
                 {
-                    Debug.Log($"QRCodeDisplayUI: QR code chargé avec succès ({texture.width}x{texture.height})");
+                    Debug.Log("QRCodeDisplayUI: QR code chargé avec succès");
                 }
             }
             else
             {
                 Debug.LogError($"QRCodeDisplayUI: Erreur de chargement du QR code - {request.error}");
-                Debug.LogError($"QRCodeDisplayUI: Code réponse: {request.responseCode}"); // LOG AJOUTÉ
-                Debug.LogError($"QRCodeDisplayUI: URL échouée: {request.uri}"); // LOG AJOUTÉ
             }
         }
     }
@@ -258,5 +273,20 @@ public class QRCodeDisplayUI : MonoBehaviour
 
         UpdateStatusText(player1StatusText, "En attente...", waitingColor);
         UpdateStatusText(player2StatusText, "En attente...", waitingColor);
+    }
+
+    private void OnBackButtonClicked()
+    {
+        if (showDebug)
+        {
+            Debug.Log("QRCodeDisplayUI: Retour au menu précédent.");
+        }
+
+        if (MenuPageManager.Instance != null)
+        {
+            // IMPORTANT : Vérifie que cette méthode existe dans ton MenuPageManager.
+            // Si ta page d'accueil s'appelle autrement (ex: ShowMainMenu), change le nom ici.
+            MenuPageManager.Instance.ShowHomePage(); 
+        }
     }
 }

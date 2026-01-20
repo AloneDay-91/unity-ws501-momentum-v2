@@ -28,6 +28,10 @@ public class LobbyPageUI : MonoBehaviour
     [Tooltip("Texte du bouton start")]
     public TMP_Text startButtonText;
 
+    [Header("Navigation")]
+    [Tooltip("Bouton pour revenir au menu précédent")]
+    public Button backButton;
+
     [Header("Scene Loading")]
     [Tooltip("Nom de la scène de jeu à charger")]
     public string gameSceneName = "main";
@@ -56,6 +60,11 @@ public class LobbyPageUI : MonoBehaviour
         if (startGameButton != null)
         {
             startGameButton.onClick.AddListener(OnStartGameClicked);
+        }
+
+        if (backButton != null)
+        {
+            backButton.onClick.AddListener(OnBackButtonClicked);
         }
 
         UpdateDisplay();
@@ -188,7 +197,7 @@ public class LobbyPageUI : MonoBehaviour
         // Retourne à la page d'accueil
         if (MenuPageManager.Instance != null)
         {
-            MenuPageManager.Instance.ShowHomePage();
+            MenuPageManager.Instance.ShowQRCodePage();
         }
     }
 }
