@@ -176,6 +176,7 @@ public class QRCodeDisplayUI : MonoBehaviour
 
         // Utilise UnityWebRequestTexture directement (fonctionne si le serveur a les headers CORS)
         // Le proxy Anatidae corrompt les données binaires, donc on charge directement
+        Debug.Log($"QRCodeDisplayUI: Tentative de chargement de l'URL: {qrCodeUrl}"); // LOG AJOUTÉ
         using (UnityWebRequest request = UnityWebRequestTexture.GetTexture(qrCodeUrl))
         {
             yield return request.SendWebRequest();
@@ -193,6 +194,8 @@ public class QRCodeDisplayUI : MonoBehaviour
             else
             {
                 Debug.LogError($"QRCodeDisplayUI: Erreur de chargement du QR code - {request.error}");
+                Debug.LogError($"QRCodeDisplayUI: Code réponse: {request.responseCode}"); // LOG AJOUTÉ
+                Debug.LogError($"QRCodeDisplayUI: URL échouée: {request.uri}"); // LOG AJOUTÉ
             }
         }
     }

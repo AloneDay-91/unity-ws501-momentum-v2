@@ -14,52 +14,8 @@ public class MainMenuManager : MonoBehaviour
     [Tooltip("Activer le contrôle par bouton arcade")]
     [SerializeField] private bool enableArcadeInput = true;
 
-    [Header("Audio Settings")]
-    [Tooltip("Musique de fond du menu")]
-    [SerializeField] private AudioClip menuMusic;
-
-    [Tooltip("Volume de la musique (0-1)")]
-    [Range(0f, 1f)]
-    [SerializeField] private float musicVolume = 0.5f;
-
-    [Tooltip("Pitch de la musique (0.5-2, normal = 1)")]
-    [Range(0.5f, 2f)]
-    [SerializeField] private float musicPitch = 1f;
-
-    private AudioSource audioSource;
-
     void Start()
     {
-        // Créer et configurer l'AudioSource pour la musique
-        audioSource = gameObject.GetComponent<AudioSource>();
-        if (audioSource == null)
-        {
-            audioSource = gameObject.AddComponent<AudioSource>();
-        }
-
-        if (menuMusic != null)
-        {
-            audioSource.clip = menuMusic;
-            audioSource.volume = musicVolume;
-            audioSource.pitch = musicPitch;
-            audioSource.loop = true;
-            audioSource.playOnAwake = false;
-            audioSource.Play();
-            Debug.Log($"Musique du menu lancée - Volume: {musicVolume}, Pitch: {musicPitch}");
-        }
-        else
-        {
-            Debug.LogWarning("Aucune musique assignée au menu !");
-        }
-    }
-
-    void Update()
-    {
-        // Détecter l'appui sur le bouton P1_B1 pour lancer le jeu
-        if (enableArcadeInput && Input.GetButtonDown(playButtonName))
-        {
-            PlayGame();
-        }
     }
 
     /// <summary>

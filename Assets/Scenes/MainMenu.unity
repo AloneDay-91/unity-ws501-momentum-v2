@@ -451,8 +451,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a80bbb05671aa46c785fa6a4c627129f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  apiBaseUrl: http://localhost:3000
-  pollingInterval: 5
+  apiBaseUrl: https://momentum.mmi23f03.fr
+  pollingInterval: 3
   showDebug: 1
 --- !u!4 &256812923
 Transform:
@@ -1383,6 +1383,68 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 687010765}
   m_CullTransparentMesh: 1
+--- !u!1 &748746535
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 748746537}
+  - component: {fileID: 748746536}
+  m_Layer: 0
+  m_Name: AudioManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &748746536
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 748746535}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 76e46c249db9942fab63f76bb3eb9b1e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  sounds:
+  - name: music_menu
+    clip: {fileID: 8300000, guid: 8274e938429074dab9a46f6b141f5ff5, type: 3}
+    volume: 0.5
+    pitch: 1
+    pitchVariation: 0
+    loop: 1
+    source: {fileID: 0}
+  - name: music_menu_v2
+    clip: {fileID: 8300000, guid: dfab4c5eca230499684e9a63bcb4987e, type: 3}
+    volume: 0.5
+    pitch: 1
+    pitchVariation: 0
+    loop: 1
+    source: {fileID: 0}
+  masterVolume: 1
+  sfxVolume: 1
+  musicVolume: 1
+--- !u!4 &748746537
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 748746535}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 3.6739757, y: 0.8435248, z: 3.479591}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &777702057
 GameObject:
   m_ObjectHideFlags: 0
@@ -1504,6 +1566,52 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 777702057}
   m_CullTransparentMesh: 1
+--- !u!1 &874430360
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 874430362}
+  - component: {fileID: 874430361}
+  m_Layer: 0
+  m_Name: GameManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &874430361
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 874430360}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 42f88da4658f640fa8ac12ee26453fda, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  arcadeBaseUrl: http://localhost:3000
+  gameName: momentum
+--- !u!4 &874430362
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 874430360}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 777.22797, y: 307.66876, z: -1179.6681}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &961739749
 GameObject:
   m_ObjectHideFlags: 0
@@ -1641,6 +1749,60 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &997727556
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 997727558}
+  - component: {fileID: 997727557}
+  m_Layer: 0
+  m_Name: MusicManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &997727557
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 997727556}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f2197e3711de64666b1a2b97c736819b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  musicName: music_menu_v2
+  playOnStart: 1
+  persistBetweenScenes: 0
+  fadeInDuration: 1.5
+  targetVolume: 0.5
+  sceneMusicList:
+  - sceneName: MainMenu
+    musicName: music_menu_v2
+  - sceneName: main
+    musicName: musicMap1
+--- !u!4 &997727558
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 997727556}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 309.4114, y: -57.517, z: 107.30636}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1035860039
 GameObject:
   m_ObjectHideFlags: 0
@@ -1710,9 +1872,6 @@ MonoBehaviour:
   gameSceneName: main
   playButtonName: P1_B1
   enableArcadeInput: 1
-  menuMusic: {fileID: 8300000, guid: dfab4c5eca230499684e9a63bcb4987e, type: 3}
-  musicVolume: 0.5
-  musicPitch: 1
 --- !u!4 &1063117867
 Transform:
   m_ObjectHideFlags: 0
@@ -3812,3 +3971,6 @@ SceneRoots:
   - {fileID: 1063117867}
   - {fileID: 1177680372}
   - {fileID: 256812923}
+  - {fileID: 874430362}
+  - {fileID: 997727558}
+  - {fileID: 748746537}

@@ -228,6 +228,38 @@ public class ScoreManager : MonoBehaviour
 
             hasEndedGame = true;
             StartCoroutine(SendScoresToAPI());
+            StartCoroutine(SendScoresToArcade());
+        }
+    }
+
+    /// <summary>
+    /// Envoie les scores à la borne d'arcade locale
+    /// </summary>
+    private IEnumerator SendScoresToArcade()
+    {
+        if (Anatidae.AnatidaeArcadeClient.Instance == null)
+        {
+            Debug.LogWarning("ScoreManager: AnatidaeArcadeClient manquant, scores non envoyés à la borne.");
+            yield break;
+        }
+
+        if (GameSessionManager.Instance == null) yield break;
+
+        foreach (var kvp in playerScores)
+        {
+            int playerId = kvp.Key;
+            int score = kvp.Value.totalScore;
+            string name = (playerId == 1) ? GameSessionManager.Instance.player1Pseudo : GameSessionManager.Instance.player2Pseudo;
+
+            if (!string.IsNullOrEmpty(name))
+            {
+                if (showDebug) Debug.Log($"ScoreManager: Envoi score Arcade pour {name} ({score})...");
+                
+                // On attend la fin de l'envoi pour ce joueur avant de passer au suivant
+                yield return Anatidae.AnatidaeArcadeClient.Instance.PostHighscore(name, score, (success) => {
+                    if (showDebug) Debug.Log($"ScoreManager: Score Arcade {name} envoyé: {success}");
+                });
+            }
         }
     }
 
