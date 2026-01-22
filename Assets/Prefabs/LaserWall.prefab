@@ -63,7 +63,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  - {fileID: 2100000, guid: 998b6cb742825954e9e5d68b2cf18eb1, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -118,19 +118,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e0ac1a917c23848c68743b1b5fc0e186, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  startDelay: 10
+  startDelay: 30
   autoStart: 1
-  moveSpeed: 2
+  moveSpeed: 1.5
   moveDirection: {x: 1, y: 0, z: 0}
   acceleration: 0.1
-  maxSpeed: 10
+  maxSpeed: 2
   maxPosition: 1000
   useMaxPosition: 0
   playerTag: Player
   eliminationDelay: 0.5
   wallParticles: {fileID: 0}
   eliminationEffect: {fileID: 0}
-  wallColor: {r: 0.50980395, g: 0.92941177, b: 0.023529412, a: 1}
+  wallColor: {r: 0.50980395, g: 0.92941177, b: 0.023529412, a: 0.6156863}
   wallSoundName: laserWall
   eliminationSoundName: playerEliminated
   showDebug: 1
