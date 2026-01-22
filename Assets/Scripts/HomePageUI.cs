@@ -10,8 +10,8 @@ public class HomePageUI : MonoBehaviour
     [Tooltip("Bouton Play pour lancer une partie")]
     public Button playButton;
 
-    [Tooltip("Bouton Quit (optionnel)")]
-    public Button quitButton;
+    [Tooltip("Bouton pour ouvrir l'aide / Comment jouer")] // <--- MODIFIÉ
+    public Button howToPlayButton;                         // <--- MODIFIÉ (anciennement quitButton)
 
     [Header("Debug")]
     public bool showDebug = true;
@@ -24,10 +24,12 @@ public class HomePageUI : MonoBehaviour
             playButton.onClick.AddListener(OnPlayButtonClicked);
         }
 
-        // Configure le bouton Quit
-        if (quitButton != null)
+        // Configure le bouton Comment Jouer
+        if (howToPlayButton != null)
         {
-            quitButton.onClick.AddListener(OnQuitButtonClicked);
+            // On retire les anciens listeners par sécurité et on ajoute le nouveau
+            howToPlayButton.onClick.RemoveAllListeners();
+            howToPlayButton.onClick.AddListener(OnHowToPlayClicked); // <--- MODIFIÉ
         }
     }
 
@@ -36,10 +38,7 @@ public class HomePageUI : MonoBehaviour
     /// </summary>
     private void OnPlayButtonClicked()
     {
-        if (showDebug)
-        {
-            Debug.Log("HomePageUI: Bouton Play cliqué");
-        }
+        if (showDebug) Debug.Log("HomePageUI: Bouton Play cliqué");
 
         // Crée une nouvelle session de jeu
         if (GameSessionManager.Instance != null)
@@ -64,19 +63,21 @@ public class HomePageUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Appelé quand le bouton Quit est cliqué
+    /// Appelé quand le bouton Comment Jouer est cliqué
     /// </summary>
-    private void OnQuitButtonClicked()
+    private void OnHowToPlayClicked() // <--- MODIFIÉ (Logique changée)
     {
-        if (showDebug)
-        {
-            Debug.Log("HomePageUI: Bouton Quit cliqué");
-        }
+        if (showDebug) Debug.Log("HomePageUI: Bouton Comment Jouer cliqué");
 
-#if UNITY_EDITOR
-        UnityEditor.EditorApplication.isPlaying = false;
-#else
-        Application.Quit();
-#endif
+        // Au lieu de quitter, on navigue vers la page d'aide
+        if (MenuPageManager.Instance != null)
+        {
+            // Appelle la méthode créée dans l'étape précédente
+            MenuPageManager.Instance.ShowHowToPlayPage();
+        }
+        else
+        {
+            Debug.LogError("HomePageUI: MenuPageManager non trouvé ! Impossible d'afficher l'aide.");
+        }
     }
 }

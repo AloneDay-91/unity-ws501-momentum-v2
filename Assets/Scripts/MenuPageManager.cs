@@ -18,6 +18,9 @@ public class MenuPageManager : MonoBehaviour
     [Tooltip("Page du lobby (attente des joueurs)")]
     public GameObject lobbyPage;
 
+    [Tooltip("Page Comment Jouer (Tutoriel)")]
+    public GameObject howToPlayPage;
+
     [Header("Settings")]
     [Tooltip("Page à afficher au démarrage")]
     public GameObject startingPage;
@@ -48,6 +51,7 @@ public class MenuPageManager : MonoBehaviour
         if (homePage != null) pages["home"] = homePage;
         if (qrCodePage != null) pages["qrcode"] = qrCodePage;
         if (lobbyPage != null) pages["lobby"] = lobbyPage;
+        if (howToPlayPage != null) pages["howtoplay"] = howToPlayPage;
 
         // Cache toutes les pages
         foreach (var page in pages.Values)
@@ -133,6 +137,14 @@ public class MenuPageManager : MonoBehaviour
     public void ShowLobbyPage()
     {
         ShowPage(lobbyPage);
+    }
+
+    /// <summary>
+    /// Affiche la page Comment Jouer
+    /// </summary>
+    public void ShowHowToPlayPage()
+    {
+        ShowPage(howToPlayPage);
     }
 
     /// <summary>

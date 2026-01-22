@@ -499,7 +499,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   gameOverPanel: {fileID: 983140065}
   firstSelectedButton: {fileID: 1952750518}
-  playerInput: {fileID: 1513974067}
+  showDebug: 1
 --- !u!1 &102922042
 GameObject:
   m_ObjectHideFlags: 0
@@ -531,7 +531,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   countdownOverlay: {fileID: 395132495}
   gameOverPanel: {fileID: 983140065}
+  gameOverTitleText: {fileID: 0}
+  winnerText: {fileID: 0}
+  scoresText: {fileID: 0}
+  player1EliminatedOverlay: {fileID: 0}
+  player2EliminatedOverlay: {fileID: 0}
+  player1EliminatedText: {fileID: 0}
+  player2EliminatedText: {fileID: 0}
   countdownDuration: 3
+  showDebug: 1
 --- !u!4 &102922044
 Transform:
   m_ObjectHideFlags: 0
