@@ -204,6 +204,15 @@ public class ProgressionTracker : MonoBehaviour
     }
 
     /// <summary>
+    /// Obtient la distance parcourue par le joueur depuis le départ
+    /// </summary>
+    public float GetDistanceTraveled(Transform player)
+    {
+        if (player == null) return 0f;
+        return Mathf.Max(0f, player.position.x - startPositionX);
+    }
+
+    /// <summary>
     /// Vérifie si un joueur est en danger (proche du mur)
     /// </summary>
     public bool IsPlayerInDanger(Transform player, float dangerDistance = 10f)

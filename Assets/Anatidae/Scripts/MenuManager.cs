@@ -20,20 +20,30 @@ public class MenuManager : MonoBehaviour
 
     void Update()
     {
-        if (heldQuitTimer >= HeldQuitTime || afkTimer >= AfkTime) {
-            BackToMenu();
+        if (Input.GetButton("Coin"))
+        {
+            heldQuitTimer += Time.unscaledDeltaTime;
+            if (heldQuitTimer > 0.1f && (int)(heldQuitTimer * 5) != (int)((heldQuitTimer - Time.unscaledDeltaTime) * 5))
+            {
+                Debug.Log($"MenuManager: Bouton Coin maintenu... {heldQuitTimer:F1}/{HeldQuitTime:F1}");
+            }
+        }
+        else
+        {
+            if (heldQuitTimer > 0) Debug.Log("MenuManager: Bouton Coin relâché");
+            heldQuitTimer = 0f;
         }
 
-        if (Input.GetButton("Coin"))
-            heldQuitTimer += Time.deltaTime;
-        else
-            heldQuitTimer = 0f;
+        if (heldQuitTimer >= HeldQuitTime || afkTimer >= AfkTime) {
+            Debug.Log($"MenuManager: Action Quitter déclenchée! Held: {heldQuitTimer >= HeldQuitTime}, AFK: {afkTimer >= AfkTime}");
+            BackToMenu();
+        }
 
         if (Mathf.Abs(Input.GetAxisRaw("P1_Horizontal")) > 0.5f || Mathf.Abs(Input.GetAxisRaw("P1_Vertical")) > 0.5f || Input.GetButton("P1_Start") || Input.GetButton("P1_B1") || Input.GetButton("P1_B2") || Input.GetButton("P1_B3") || Input.GetButton("P1_B4") || Input.GetButton("P1_B5") || Input.GetButton("P1_B6") ||
             Mathf.Abs(Input.GetAxisRaw("P2_Horizontal")) > 0.5f || Mathf.Abs(Input.GetAxisRaw("P2_Vertical")) > 0.5f || Input.GetButton("P2_Start") || Input.GetButton("P2_B1") || Input.GetButton("P2_B2") || Input.GetButton("P2_B3") || Input.GetButton("P2_B4") || Input.GetButton("P2_B5") || Input.GetButton("P2_B6"))
             afkTimer = 0f;
         else
-            afkTimer += Time.deltaTime;
+            afkTimer += Time.unscaledDeltaTime;
 
         if (heldQuitTimer != 0 || afkTimer - AfkTime + 6f > 0f) {
             quitText.gameObject.SetActive(true);

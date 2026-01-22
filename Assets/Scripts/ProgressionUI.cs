@@ -30,36 +30,31 @@ public class ProgressionUI : MonoBehaviour
     [Tooltip("Couleurs des indicateurs par joueur")]
     public Color[] playerColors = new Color[] { Color.blue, Color.red, Color.green, Color.yellow };
 
+    [Header("Player 1 UI")]
+    [Tooltip("Texte distance pour Joueur 1")]
+    public TMP_Text p1DistanceText;
+    [Tooltip("Texte rang pour Joueur 1")]
+    public TMP_Text p1RankText;
+
+    [Header("Player 2 UI")]
+    [Tooltip("Texte distance pour Joueur 2")]
+    public TMP_Text p2DistanceText;
+    [Tooltip("Texte rang pour Joueur 2")]
+    public TMP_Text p2RankText;
+
+    [Header("Format")]
+    [Tooltip("Format du texte de distance")]
+    public string distanceFormat = "{0:F0}m";
+
+    [Tooltip("Format du texte de classement")]
+    public string rankFormat = "{0}/{1}";
+
     [Header("Laser Wall Indicator")]
     [Tooltip("Indicateur du mur de laser")]
     public Image laserWallIndicator;
 
     [Tooltip("Couleur de l'indicateur du mur")]
     public Color laserWallColor = Color.red;
-
-    [Header("Distance Display")]
-    [Tooltip("Texte pour afficher la distance avec le mur")]
-    public TMP_Text distanceText;
-
-    [Tooltip("Format du texte de distance")]
-    public string distanceFormat = "Distance: {0:F0}m";
-
-    [Header("Rank Display")]
-    [Tooltip("Texte pour afficher le classement")]
-    public TMP_Text rankText;
-
-    [Tooltip("Format du texte de classement")]
-    public string rankFormat = "Rank: {0}/{1}";
-
-    [Header("Settings")]
-    [Tooltip("Afficher le joueur local seulement (pour split screen)")]
-    public bool showLocalPlayerOnly = false;
-
-    [Tooltip("ID du joueur local (1 ou 2)")]
-    public int localPlayerID = 1;
-
-    [Tooltip("Afficher le mur de laser")]
-    public bool showLaserWall = true;
 
     // Indicateurs créés dynamiquement
     private Dictionary<Transform, Image> playerIndicators = new Dictionary<Transform, Image>();
@@ -102,20 +97,8 @@ public class ProgressionUI : MonoBehaviour
         // Crée les indicateurs de joueurs
         CreatePlayerIndicators();
 
-        // Cache l'UI au démarrage si countdown est actif
-        if (ShouldHideUI())
-        {
-            HideUI();
-        }
-
         // Debug: Affiche les infos de configuration
         Debug.Log($"ProgressionUI: Initialisé avec {playerIndicators.Count} joueurs détectés");
-        if (progressBarFill != null)
-            Debug.Log($"ProgressionUI: Progress bar trouvée");
-        if (distanceText != null)
-            Debug.Log($"ProgressionUI: Distance text trouvé");
-        if (rankText != null)
-            Debug.Log($"ProgressionUI: Rank text trouvé");
     }
 
     void Update()
@@ -127,17 +110,6 @@ public class ProgressionUI : MonoBehaviour
         {
             Debug.Log($"ProgressionUI: Recréation des indicateurs - {progressionTracker.players.Count} joueurs trouvés");
             CreatePlayerIndicators();
-        }
-
-        // Debug périodique de l'état du CanvasGroup
-        if (Time.frameCount % 120 == 0)
-        {
-            if (canvasGroup != null)
-            {
-                Debug.Log($"ProgressionUI: CanvasGroup alpha={canvasGroup.alpha}");
-            }
-            bool shouldHide = ShouldHideUI();
-            Debug.Log($"ProgressionUI: ShouldHideUI={shouldHide}");
         }
 
         // Hide UI when countdown overlay is active
@@ -153,8 +125,55 @@ public class ProgressionUI : MonoBehaviour
 
         UpdatePlayerIndicators();
         UpdateLaserWallIndicator();
-        UpdateDistanceText();
-        UpdateRankText();
+        
+        // Mise à jour des textes P1 et P2
+        UpdatePlayerUI(1, p1DistanceText, p1RankText);
+        UpdatePlayerUI(2, p2DistanceText, p2RankText);
+    }
+
+    private void UpdatePlayerUI(int playerId, TMP_Text distText, TMP_Text rkText)
+    {
+        Transform playerTransform = GetPlayerTransformByID(playerId);
+        
+        // Mise à jour Distance
+        if (distText != null)
+        {
+            if (playerTransform != null)
+            {
+                float distance = progressionTracker.GetDistanceTraveled(playerTransform);
+                distText.text = string.Format(distanceFormat, distance);
+            }
+            else
+            {
+                distText.text = "";
+            }
+        }
+
+        // Mise à jour Rank
+        if (rkText != null)
+        {
+            if (playerTransform != null)
+            {
+                int rank = progressionTracker.GetPlayerRank(playerTransform);
+                int total = progressionTracker.players.Count;
+                rkText.text = string.Format(rankFormat, rank, total);
+            }
+            else
+            {
+                rkText.text = "";
+            }
+        }
+    }
+
+    private Transform GetPlayerTransformByID(int playerId)
+    {
+        foreach (Transform p in progressionTracker.players)
+        {
+            if (p == null) continue;
+            var input = p.GetComponent<PlayerInput>();
+            if (input != null && input.playerID == playerId) return p;
+        }
+        return null;
     }
 
     private bool ShouldHideUI()
@@ -202,16 +221,6 @@ public class ProgressionUI : MonoBehaviour
         {
             if (player == null) continue;
 
-            // Filtre par joueur local si nécessaire
-            if (showLocalPlayerOnly)
-            {
-                PlayerInput playerInput = player.GetComponent<PlayerInput>();
-                if (playerInput != null && playerInput.playerID != localPlayerID)
-                {
-                    continue;
-                }
-            }
-
             // Crée l'indicateur
             GameObject indicator = Instantiate(playerIndicatorPrefab, indicatorsParent);
             Image indicatorImage = indicator.GetComponent<Image>();
@@ -249,12 +258,6 @@ public class ProgressionUI : MonoBehaviour
             RectTransform indicatorRect = indicator.rectTransform;
             float xPos = progress * barWidth;
             indicatorRect.anchoredPosition = new Vector2(xPos, 0);
-
-            // Debug occasionnel
-            if (Time.frameCount % 60 == 0) // Toutes les 60 frames
-            {
-                Debug.Log($"Player {player.name}: position={player.position.x:F1}, progress={progress:F2}, xPos={xPos:F1}");
-            }
         }
 
         // Update progress bar fill
@@ -271,25 +274,12 @@ public class ProgressionUI : MonoBehaviour
                 }
             }
             progressBarFill.fillAmount = maxProgress;
-
-            // Debug occasionnel
-            if (Time.frameCount % 60 == 0)
-            {
-                Debug.Log($"ProgressionUI: Progress bar fillAmount set to {maxProgress:F2} ({maxProgress * 100:F0}%)");
-            }
-        }
-        else
-        {
-            if (Time.frameCount % 60 == 0)
-            {
-                Debug.LogWarning($"ProgressionUI: Cannot update progress bar - progressBarFill={progressBarFill != null}, playerIndicators.Count={playerIndicators.Count}");
-            }
         }
     }
 
     private void UpdateLaserWallIndicator()
     {
-        if (!showLaserWall || laserWallIndicator == null || indicatorsParent == null) return;
+        if (laserWallIndicator == null || indicatorsParent == null) return;
 
         float progress = progressionTracker.GetLaserWallProgress();
         float barWidth = indicatorsParent.rect.width;
@@ -297,115 +287,5 @@ public class ProgressionUI : MonoBehaviour
         RectTransform wallRect = laserWallIndicator.rectTransform;
         float xPos = progress * barWidth;
         wallRect.anchoredPosition = new Vector2(xPos, 0);
-    }
-
-    private void UpdateDistanceText()
-    {
-        if (distanceText == null || progressionTracker == null) return;
-
-        // Trouve le joueur local
-        Transform localPlayer = GetLocalPlayer();
-        if (localPlayer == null)
-        {
-            if (Time.frameCount % 60 == 0)
-            {
-                Debug.LogWarning("ProgressionUI: Aucun joueur local trouvé pour afficher la distance");
-            }
-            return;
-        }
-
-        float distance = progressionTracker.GetDistanceFromLaserWall(localPlayer);
-
-        if (distance == float.MaxValue)
-        {
-            distanceText.text = "";
-            if (Time.frameCount % 60 == 0)
-            {
-                Debug.Log("ProgressionUI: Distance = MaxValue (pas de laser wall?)");
-            }
-            return;
-        }
-
-        distanceText.text = string.Format(distanceFormat, distance);
-
-        // Debug occasionnel
-        if (Time.frameCount % 60 == 0)
-        {
-            Debug.Log($"ProgressionUI: Distance text updated: {distance:F1}m");
-        }
-
-        // Change la couleur selon la distance
-        if (progressionTracker.IsPlayerInDanger(localPlayer, 15f))
-        {
-            distanceText.color = Color.red;
-        }
-        else if (distance < 30f)
-        {
-            distanceText.color = Color.yellow;
-        }
-        else
-        {
-            distanceText.color = Color.white;
-        }
-    }
-
-    private void UpdateRankText()
-    {
-        if (rankText == null || progressionTracker == null) return;
-
-        // Trouve le joueur local
-        Transform localPlayer = GetLocalPlayer();
-        if (localPlayer == null) return;
-
-        int rank = progressionTracker.GetPlayerRank(localPlayer);
-        int totalPlayers = progressionTracker.players.Count;
-
-        rankText.text = string.Format(rankFormat, rank, totalPlayers);
-    }
-
-    private Transform GetLocalPlayer()
-    {
-        if (progressionTracker == null) return null;
-
-        if (showLocalPlayerOnly)
-        {
-            // Trouve le joueur local par ID
-            foreach (Transform player in progressionTracker.players)
-            {
-                if (player == null) continue;
-
-                PlayerInput playerInput = player.GetComponent<PlayerInput>();
-                if (playerInput != null && playerInput.playerID == localPlayerID)
-                {
-                    return player;
-                }
-            }
-        }
-        else
-        {
-            // Retourne le premier joueur par défaut
-            return progressionTracker.players.Count > 0 ? progressionTracker.players[0] : null;
-        }
-
-        return null;
-    }
-
-    /// <summary>
-    /// Met à jour l'ID du joueur local (pour changer de vue)
-    /// </summary>
-    public void SetLocalPlayer(int playerID)
-    {
-        localPlayerID = playerID;
-
-        // Recrée les indicateurs
-        foreach (var indicator in playerIndicators.Values)
-        {
-            if (indicator != null)
-            {
-                Destroy(indicator.gameObject);
-            }
-        }
-        playerIndicators.Clear();
-        CreatePlayerIndicators();
     }
 }

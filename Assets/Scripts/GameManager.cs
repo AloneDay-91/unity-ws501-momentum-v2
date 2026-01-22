@@ -15,6 +15,9 @@ public class GameManager : MonoBehaviour
     public GameObject gameOverPanel;
 
     [Header("UI Textes du GameOverPanel")]
+    [Tooltip("Premier bouton à sélectionner lors du GameOver (ex: Rejouer)")]
+    public GameObject gameOverFirstButton;
+
     [Tooltip("Texte principal (ex: 'Partie Terminée')")]
     public TMP_Text gameOverTitleText;
     [Tooltip("Texte du gagnant")]
@@ -405,6 +408,18 @@ public class GameManager : MonoBehaviour
                 scoresDisplay += $"{name}: {kvp.Value} pts\n";
             }
             scoresText.text = scoresDisplay;
+        }
+
+        // Force la sélection du bouton pour la navigation au clavier/arcade
+        if (gameOverFirstButton != null)
+        {
+            EventSystem.current.SetSelectedGameObject(null);
+            EventSystem.current.SetSelectedGameObject(gameOverFirstButton);
+            if (showDebug) Debug.Log("GameManager: Bouton GameOver sélectionné");
+        }
+        else
+        {
+            if (showDebug) Debug.LogWarning("GameManager: Pas de gameOverFirstButton assigné !");
         }
 
         // Pause le jeu
