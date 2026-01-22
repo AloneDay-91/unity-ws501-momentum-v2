@@ -9,7 +9,9 @@ public class PlayerLight : MonoBehaviour
     public Light playerGlowLight;
 
     [Header("Réglages du Glow (Nuit)")]
-    public float maxGlowIntensity = 15.0f; // (Vous pouvez garder une valeur élevée)
+    public float maxGlowIntensity = 15.0f; 
+    public float spotAngle = 60.0f; // Nouvelle variable pour la largeur
+    public float innerSpotAngle = 30.0f; // Nouvelle variable pour le cône interne
     public float drainRate = 5.0f; 
     [Tooltip("Définit comment l'intensité de la lumière réagit au remplissage de la barre.")]
     public AnimationCurve intensityCurve;
@@ -33,6 +35,12 @@ public class PlayerLight : MonoBehaviour
         if (playerGlowLight == null)
         {
             Debug.LogError("La lumière 'PlayerGlow' n'est pas assignée !");
+        }
+        else
+        {
+            // Applique les réglages de largeur
+            playerGlowLight.spotAngle = spotAngle;
+            playerGlowLight.innerSpotAngle = innerSpotAngle;
         }
         // (L'initialisation des rotations est supprimée)
     }

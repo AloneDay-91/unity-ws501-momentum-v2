@@ -250,7 +250,7 @@ public class PlayerDustParticles : MonoBehaviour
         Gizmos.DrawWireSphere(origin, 0.1f);
 
         // Indicateur de vitesse
-        if (Application.isPlaying)
+        if (Application.isPlaying && rb != null)
         {
             Gizmos.color = currentSpeed > minSpeedToEmit ? Color.cyan : Color.gray;
             Vector3 velocityDir = new Vector3(rb.velocity.x, 0, rb.velocity.z).normalized;

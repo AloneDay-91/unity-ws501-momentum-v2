@@ -1,105 +1,111 @@
 using UnityEngine;
-using System.Collections; // Important pour utiliser les Coroutines
+using System.Collections;
 
 [RequireComponent(typeof(Camera))]
 public class SkyColorController : MonoBehaviour
 {
-    [Header("Couleurs du Cycle")]
-    public Color dayColor = new Color(0.2f, 0.7f, 1.0f); // (Bleu ciel)
-    public Color nightColor = new Color(0.1f, 0.0f, 0.2f); // (Violet foncé)
+    [Header("Exposition du Ciel")]
+    [Tooltip("Exposition de la Skybox le jour (1.0 = normal)")]
+    public float dayExposure = 1.0f;
+    [Tooltip("Exposition de la Skybox la nuit (0.2 = sombre)")]
+    public float nightExposure = 0.2f;
 
     [Header("Configuration du Fondu")]
     [Tooltip("Durée (en secondes) du fondu entre le jour et la nuit.")]
-    public float fadeDuration = 2.0f; // Durée du fondu
+    public float fadeDuration = 2.0f;
 
     private Camera cam;
-    private Coroutine currentFadeCoroutine; // Référence à la coroutine en cours
+    private Coroutine currentFadeCoroutine;
+    private Material skyboxMat;
 
     void Awake()
     {
         cam = GetComponent<Camera>();
-    }
-
-    // On s'abonne aux événements
-    void OnEnable()
-    {
-        GameCycleManager.OnDayStart += SetDayColor;
-        GameCycleManager.OnNightStart += SetNightColor;
-    }
-
-    // On se désabonne
-    void OnDisable()
-    {
-        GameCycleManager.OnDayStart -= SetDayColor;
-        GameCycleManager.OnNightStart -= SetNightColor;
-    }
-
-    // Gère l'état au démarrage (instantané)
-    void Start()
-    {
-        if (GameCycleManager.Instance.IsDay)
+        
+        // Force le mode Skybox si une Skybox est définie
+        if (RenderSettings.skybox != null)
         {
-            cam.backgroundColor = dayColor;
+            cam.clearFlags = CameraClearFlags.Skybox;
+            skyboxMat = RenderSettings.skybox;
         }
         else
         {
-            cam.backgroundColor = nightColor;
+            Debug.LogWarning("SkyColorController: Aucune Skybox assignée dans Lighting Settings !");
         }
     }
 
-    // --- FONCTIONS MODIFIÉES ---
-
-    void SetDayColor()
+    void OnEnable()
     {
-        // On lance la coroutine de fondu vers la couleur "Jour"
-        StartFade(dayColor);
+        GameCycleManager.OnDayStart += SetDaySky;
+        GameCycleManager.OnNightStart += SetNightSky;
     }
 
-    void SetNightColor()
+    void OnDisable()
     {
-        // On lance la coroutine de fondu vers la couleur "Nuit"
-        StartFade(nightColor);
+        GameCycleManager.OnDayStart -= SetDaySky;
+        GameCycleManager.OnNightStart -= SetNightSky;
     }
 
-    // --- NOUVELLES FONCTIONS ---
-
-    // Gère le démarrage et l'arrêt de la coroutine
-    void StartFade(Color targetColor)
+    void Start()
     {
-        // Si un fondu est déjà en cours, on l'arrête
+        // État initial instantané
+        if (skyboxMat != null)
+        {
+            float targetExp = GameCycleManager.Instance.IsDay ? dayExposure : nightExposure;
+            skyboxMat.SetFloat("_Exposure", targetExp);
+        }
+    }
+
+    void SetDaySky()
+    {
+        StartFade(dayExposure);
+    }
+
+    void SetNightSky()
+    {
+        StartFade(nightExposure);
+    }
+
+    void StartFade(float targetExposure)
+    {
         if (currentFadeCoroutine != null)
         {
             StopCoroutine(currentFadeCoroutine);
         }
         
-        // On lance le nouveau fondu
-        currentFadeCoroutine = StartCoroutine(FadeToColor(targetColor));
+        if (skyboxMat != null)
+        {
+            currentFadeCoroutine = StartCoroutine(FadeSkybox(targetExposure));
+        }
     }
 
-    // La coroutine qui fait le fondu
-    IEnumerator FadeToColor(Color targetColor)
+    IEnumerator FadeSkybox(float targetExposure)
     {
-        Color startColor = cam.backgroundColor; // Couleur de départ
+        float startExposure = skyboxMat.GetFloat("_Exposure");
         float timer = 0f;
 
-        // Boucle tant que le fondu n'est pas terminé
         while (timer < fadeDuration)
         {
-            // Avance le minuteur
             timer += Time.deltaTime;
-            
-            // Calcule le pourcentage d'avancement (de 0.0 à 1.0)
             float normalizedTime = timer / fadeDuration;
             
-            // Applique la couleur intermédiaire
-            cam.backgroundColor = Color.Lerp(startColor, targetColor, normalizedTime);
+            // Interpolation de l'exposition
+            float currentExp = Mathf.Lerp(startExposure, targetExposure, normalizedTime);
+            skyboxMat.SetFloat("_Exposure", currentExp);
             
-            // Attend la prochaine image
             yield return null; 
         }
 
-        // S'assure que la couleur finale est exacte
-        cam.backgroundColor = targetColor;
-        currentFadeCoroutine = null; // Marque le fondu comme terminé
+        skyboxMat.SetFloat("_Exposure", targetExposure);
+        currentFadeCoroutine = null;
+    }
+    
+    // Remet l'exposition normale en quittant pour ne pas casser l'éditeur
+    void OnDestroy()
+    {
+        if (skyboxMat != null)
+        {
+            skyboxMat.SetFloat("_Exposure", dayExposure);
+        }
     }
 }

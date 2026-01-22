@@ -69,6 +69,7 @@ public class GameManager : MonoBehaviour
     void Start()
     {
         Time.timeScale = 1f;
+        Physics.autoSimulation = true; // S'assure que la physique est active au démarrage
 
         // Initialize API components
         authManager = FindObjectOfType<AuthManager>();
@@ -410,20 +411,44 @@ public class GameManager : MonoBehaviour
             scoresText.text = scoresDisplay;
         }
 
-        // Force la sélection du bouton pour la navigation au clavier/arcade
+        // La sélection du premier bouton est maintenant gérée par MenuPanelController sur le GameOverPanel
+        /*
         if (gameOverFirstButton != null)
         {
             EventSystem.current.SetSelectedGameObject(null);
             EventSystem.current.SetSelectedGameObject(gameOverFirstButton);
             if (showDebug) Debug.Log("GameManager: Bouton GameOver sélectionné");
         }
-        else
+        */
+
+        // Désactive les contrôles de tous les joueurs et fige leurs animations
+        PlayerInput[] allInputs = FindObjectsOfType<PlayerInput>();
+        foreach (var input in allInputs)
         {
-            if (showDebug) Debug.LogWarning("GameManager: Pas de gameOverFirstButton assigné !");
+            input.enabled = false;
+            
+            // Fige l'animation
+            Animator anim = input.GetComponent<Animator>();
+            if (anim == null) anim = input.GetComponentInChildren<Animator>();
+            if (anim != null) anim.speed = 0f;
+            
+            // Coupe la vélocité si Rigidbody
+            Rigidbody rb = input.GetComponent<Rigidbody>();
+            if (rb != null)
+            {
+                rb.velocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+                rb.isKinematic = true; // Empêche tout mouvement physique résiduel
+            }
         }
 
-        // Pause le jeu
-        Time.timeScale = 0f;
+        // Libère la souris (au cas où)
+        Cursor.visible = true;
+        Cursor.lockState = CursorLockMode.None;
+
+        // Pause la physique au lieu du temps (pour que l'UI continue de fonctionner)
+        Physics.autoSimulation = false;
+        // Time.timeScale = 0f; // DÉSACTIVÉ pour permettre la navigation UI
     }
 
     // --- MÉTHODES LEGACY (pour compatibilité) ---
@@ -472,6 +497,7 @@ public class GameManager : MonoBehaviour
     public void RestartGame()
     {
         Time.timeScale = 1f;
+        Physics.autoSimulation = true; // Réactive la physique
         gameInProgress = false;
 
         // Réinitialise les scores
@@ -489,6 +515,7 @@ public class GameManager : MonoBehaviour
     public void QuitToMenu()
     {
         Time.timeScale = 1f;
+        Physics.autoSimulation = true; // Réactive la physique
         gameInProgress = false;
 
         // Réinitialise la session
