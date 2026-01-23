@@ -10547,8 +10547,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   sounds:
-  - name: mapMusic
-    clip: {fileID: 8300000, guid: 71b57a61b9e194fb7be6e5709cbcfc9d, type: 3}
+  - name: Dance X_spotdown.org
+    clip: {fileID: 8300000, guid: e9a57e1162df545df8ca5025e4ecbde5, type: 3}
     volume: 0.5
     pitch: 1
     pitchVariation: 0
@@ -14431,6 +14431,56 @@ Mesh:
     offset: 0
     size: 0
     path: 
+--- !u!1 &1117392520
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1117392522}
+  - component: {fileID: 1117392521}
+  m_Layer: 0
+  m_Name: GameAudio
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1117392521
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1117392520}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f76806a62e2bf4bbcb18655ea82700b6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  musicName: Dance X_spotdown.org
+  playOnStart: 1
+  fadeInDuration: 1
+  fadeOutDuration: 0.5
+  targetVolume: 0.7
+  showDebug: 1
+--- !u!4 &1117392522
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1117392520}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 263.3635, y: 15.627884, z: -46.779266}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!43 &1122355302
 Mesh:
   m_ObjectHideFlags: 0
@@ -16050,56 +16100,6 @@ Mesh:
     offset: 0
     size: 0
     path: 
---- !u!1 &1275697040
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1275697042}
-  - component: {fileID: 1275697041}
-  m_Layer: 0
-  m_Name: MusicManager
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1275697041
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1275697040}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f2197e3711de64666b1a2b97c736819b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  musicName: mapMusic
-  playOnStart: 1
-  persistBetweenScenes: 0
-  fadeInDuration: 1.5
-  targetVolume: 0.5
-  sceneMusicList: []
---- !u!4 &1275697042
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1275697040}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 309.4114, y: -57.517, z: 107.30636}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!43 &1279589420
 Mesh:
   m_ObjectHideFlags: 0
@@ -28401,6 +28401,10 @@ PrefabInstance:
       propertyPath: timerText
       value: 
       objectReference: {fileID: 1909339921}
+    - target: {fileID: 2542222306112237988, guid: 6f7c6b70d88344239b3c550414e97707, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 6299405713661955717, guid: 6f7c6b70d88344239b3c550414e97707, type: 3}
       propertyPath: m_Name
       value: Player_J2
@@ -31490,6 +31494,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 8672183973052302584, guid: ce83c0d7dd1d04f3e914d4be6afc0104, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 9149606423128555795, guid: ce83c0d7dd1d04f3e914d4be6afc0104, type: 3}
       propertyPath: timerText
       value: 
@@ -31936,7 +31944,7 @@ SceneRoots:
   - {fileID: 1885381648}
   - {fileID: 182140883}
   - {fileID: 777148888}
-  - {fileID: 1275697042}
   - {fileID: 2091949398}
   - {fileID: 926199423}
   - {fileID: 1223217077}
+  - {fileID: 1117392522}
