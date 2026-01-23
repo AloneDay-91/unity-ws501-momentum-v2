@@ -36,12 +36,28 @@ public class SceneAudioController : MonoBehaviour
 
     void Start()
     {
+        StartCoroutine(InitializeAudio());
+    }
+
+    /// <summary>
+    /// Initialise l'audio avec un petit délai pour s'assurer que AudioManager est prêt
+    /// </summary>
+    private System.Collections.IEnumerator InitializeAudio()
+    {
+        // Attend une frame pour s'assurer que tous les singletons sont initialisés
+        yield return null;
+
         audioManager = AudioManager.Instance;
 
         if (audioManager == null)
         {
-            Debug.LogError("SceneAudioController: AudioManager introuvable!");
-            return;
+            Debug.LogError("SceneAudioController: AudioManager introuvable! Assurez-vous qu'il existe dans la scène ou qu'il persiste entre les scènes.");
+            yield break;
+        }
+
+        if (showDebug)
+        {
+            Debug.Log($"SceneAudioController: AudioManager trouvé, initialisation de l'audio pour cette scène...");
         }
 
         // Arrête toute musique précédente
@@ -50,6 +66,10 @@ public class SceneAudioController : MonoBehaviour
         if (playOnStart && !string.IsNullOrEmpty(musicName))
         {
             PlaySceneMusic();
+        }
+        else if (string.IsNullOrEmpty(musicName))
+        {
+            Debug.LogWarning("SceneAudioController: Aucun nom de musique configuré (musicName est vide)!");
         }
     }
 
@@ -98,9 +118,43 @@ public class SceneAudioController : MonoBehaviour
     /// </summary>
     public void PlaySceneMusic()
     {
-        if (audioManager == null || string.IsNullOrEmpty(musicName)) return;
+        if (audioManager == null)
+        {
+            Debug.LogError("SceneAudio: audioManager est null!");
+            return;
+        }
 
-        if (showDebug) Debug.Log($"SceneAudio: Démarrage de '{musicName}'");
+        if (string.IsNullOrEmpty(musicName))
+        {
+            Debug.LogError("SceneAudio: musicName est vide!");
+            return;
+        }
+
+        if (showDebug) Debug.Log($"SceneAudio: Tentative de démarrage de '{musicName}'...");
+
+        // Vérifie si le son existe dans AudioManager
+        bool soundFound = false;
+        if (audioManager.sounds != null)
+        {
+            foreach (var sound in audioManager.sounds)
+            {
+                if (sound.name == musicName)
+                {
+                    soundFound = true;
+                    if (showDebug)
+                    {
+                        Debug.Log($"SceneAudio: Son '{musicName}' trouvé! Clip: {(sound.clip != null ? sound.clip.name : "NULL")}, Loop: {sound.loop}");
+                    }
+                    break;
+                }
+            }
+        }
+
+        if (!soundFound)
+        {
+            Debug.LogError($"SceneAudio: Le son '{musicName}' n'existe pas dans AudioManager! Vérifiez le nom exact.");
+            return;
+        }
 
         isPlaying = true;
 
@@ -117,6 +171,8 @@ public class SceneAudioController : MonoBehaviour
         }
 
         audioManager.PlayMusic(musicName);
+
+        if (showDebug) Debug.Log($"SceneAudio: PlayMusic('{musicName}') appelé");
     }
 
     /// <summary>

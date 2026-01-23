@@ -230,6 +230,12 @@ public class GameManager : MonoBehaviour
         // Affiche l'overlay individuel pour ce joueur
         ShowPlayerEliminatedOverlay(playerID, playerName, score);
 
+        // Met à jour les AudioListeners car le joueur (et sa caméra) pourrait être désactivé
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.ManageAudioListeners();
+        }
+
         // Vérifie si tous les joueurs ont terminé
         CheckAllPlayersFinished();
     }
@@ -504,6 +510,12 @@ public class GameManager : MonoBehaviour
         if (ScoreManager.Instance != null)
         {
             ScoreManager.Instance.ResetScores();
+        }
+
+        // Redémarre une nouvelle partie via l'API (important pour sauvegarder les scores)
+        if (GameSessionManager.Instance != null)
+        {
+            GameSessionManager.Instance.StartGame(SceneManager.GetActiveScene().name);
         }
 
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
