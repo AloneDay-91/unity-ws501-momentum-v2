@@ -5,17 +5,29 @@ public class GameOverUI : MonoBehaviour
 {
     public void RestartGame()
     {
-        // Unpause the game
-        Time.timeScale = 1f;
-        // Reload the current scene
-        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.RestartGame();
+        }
+        else
+        {
+            // Fallback if GameManager is missing
+            Time.timeScale = 1f;
+            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        }
     }
 
     public void QuitGame()
     {
-        // Unpause the game
-        Time.timeScale = 1f;
-        // Load the MainMenu scene
-        SceneManager.LoadScene("MainMenu");
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.QuitToMenu();
+        }
+        else
+        {
+            // Fallback
+            Time.timeScale = 1f;
+            SceneManager.LoadScene("MainMenu");
+        }
     }
 }

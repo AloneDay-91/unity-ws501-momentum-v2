@@ -502,23 +502,31 @@ public class GameManager : MonoBehaviour
     /// </summary>
     public void RestartGame()
     {
+        StartCoroutine(RestartGameCoroutine());
+    }
+
+    private IEnumerator RestartGameCoroutine()
+    {
         Time.timeScale = 1f;
         Physics.autoSimulation = true; // Réactive la physique
         gameInProgress = false;
 
-        // Réinitialise les scores
+        // Réinitialise les scores localement
         if (ScoreManager.Instance != null)
         {
             ScoreManager.Instance.ResetScores();
         }
 
-        // Redémarre une nouvelle partie via l'API (important pour sauvegarder les scores)
-        if (GameSessionManager.Instance != null)
+        if (showDebug)
         {
-            GameSessionManager.Instance.StartGame(SceneManager.GetActiveScene().name);
+            Debug.Log("GameManager: Redémarrage local (session API maintenue ouverte)");
         }
 
+        // On ne rappelle PAS GameSessionManager.StartGame ici car cela créerait une nouvelle partie
+        // ou échouerait si la session est déjà "started". On garde la session ouverte jusqu'au Quit.
+
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        yield return null;
     }
 
     /// <summary>

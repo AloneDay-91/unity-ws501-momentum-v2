@@ -223,13 +223,21 @@ public class ScoreManager : MonoBehaviour
         {
             if (showDebug)
             {
-                Debug.Log("ScoreManager: Tous les joueurs ont terminé! Envoi des scores à l'API...");
+                Debug.Log("ScoreManager: Tous les joueurs ont terminé! Envoi des scores...");
             }
 
             hasEndedGame = true;
-            StartCoroutine(SendScoresToAPI());
+            SendScoresToAPI();
             StartCoroutine(SendScoresToArcade());
         }
+    }
+
+    /// <summary>
+    /// Sauvegarde les scores manuellement (appelé au Quit)
+    /// </summary>
+    public void SaveScoresNow(System.Action<bool> onComplete = null)
+    {
+        SendScoresToAPI(onComplete);
     }
 
     /// <summary>
@@ -264,54 +272,23 @@ public class ScoreManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Classes pour sérialiser les données en JSON
+    /// Envoie tous les scores à l'API via GameSessionManager (persistant)
     /// </summary>
-    [System.Serializable]
-    private class EndGameRequest
+    private void SendScoresToAPI(System.Action<bool> onComplete = null)
     {
-        public string sessionId;
-        public PlayerScoreData[] scores;
-    }
-
-    [System.Serializable]
-    private class PlayerScoreData
-    {
-        public int playerNumber;
-        public int totalScore;
-        public float distanceTraveled;
-        public float survivalTime;
-        public int collectiblesCollected;
-        public bool hasFinished;
-    }
-
-    /// <summary>
-    /// Envoie tous les scores à l'API /api/game/end
-    /// </summary>
-    private IEnumerator SendScoresToAPI()
-    {
-        // Récupère le sessionId depuis GameSessionManager
-        string sessionId = null;
-        string apiBaseUrl = "http://localhost:3000";
-
-        if (GameSessionManager.Instance != null)
+        if (GameSessionManager.Instance == null)
         {
-            sessionId = GameSessionManager.Instance.sessionId;
-            apiBaseUrl = GameSessionManager.Instance.apiBaseUrl.Trim();
-        }
-
-        if (string.IsNullOrEmpty(sessionId))
-        {
-            Debug.LogWarning("ScoreManager: Pas de sessionId, impossible de sauvegarder les scores via /api/game/end");
-            yield break;
+            onComplete?.Invoke(false);
+            return;
         }
 
         // Prépare les données des scores
-        List<PlayerScoreData> scoresList = new List<PlayerScoreData>();
+        List<GameSessionManager.PlayerScoreData> scoresList = new List<GameSessionManager.PlayerScoreData>();
 
         foreach (var kvp in playerScores)
         {
             PlayerScore score = kvp.Value;
-            scoresList.Add(new PlayerScoreData
+            scoresList.Add(new GameSessionManager.PlayerScoreData
             {
                 playerNumber = score.playerID,
                 totalScore = score.totalScore,
@@ -322,41 +299,7 @@ public class ScoreManager : MonoBehaviour
             });
         }
 
-        // Crée la requête
-        EndGameRequest request = new EndGameRequest
-        {
-            sessionId = sessionId,
-            scores = scoresList.ToArray()
-        };
-
-        string jsonData = JsonUtility.ToJson(request);
-        string url = $"{apiBaseUrl}/api/game/end";
-
-        if (showDebug)
-        {
-            Debug.Log($"ScoreManager: Envoi des scores à {url}");
-            Debug.Log($"ScoreManager: Données: {jsonData}");
-        }
-
-        // Utilise AnatidaeProxyWebRequest pour contourner CORS en WebGL
-        using (UnityWebRequest webRequest = AnatidaeProxyWebRequest.Post(url, jsonData, "application/json"))
-        {
-            yield return webRequest.SendWebRequest();
-
-            if (webRequest.result == UnityWebRequest.Result.Success)
-            {
-                if (showDebug)
-                {
-                    Debug.Log($"ScoreManager: Scores sauvegardés avec succès!");
-                    Debug.Log($"ScoreManager: Réponse: {webRequest.downloadHandler.text}");
-                }
-            }
-            else
-            {
-                Debug.LogError($"ScoreManager: Erreur lors de la sauvegarde des scores - {webRequest.error}");
-                Debug.LogError($"ScoreManager: Réponse: {webRequest.downloadHandler.text}");
-            }
-        }
+        GameSessionManager.Instance.SendScores(scoresList.ToArray(), onComplete);
     }
 
     /// <summary>

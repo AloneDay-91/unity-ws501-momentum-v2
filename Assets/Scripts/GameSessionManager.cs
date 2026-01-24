@@ -302,25 +302,30 @@ public class GameSessionManager : MonoBehaviour
     // Événement déclenché quand la partie démarre officiellement
     public static event System.Action OnGameStarted;
 
+    // Événement déclenché quand la partie est relancée
+    public static event System.Action OnGameRestarted;
+
     /// <summary>
     /// Démarre la partie en appelant /api/game/start
     /// À appeler quand les deux joueurs sont prêts et qu'on veut lancer le jeu
     /// </summary>
-    public void StartGame(string mapName = "default")
+    public void StartGame(string mapName = "default", Action<bool> onComplete = null)
     {
         if (string.IsNullOrEmpty(sessionId))
         {
             Debug.LogError("GameSession: Impossible de démarrer - pas de sessionId");
+            onComplete?.Invoke(false);
             return;
         }
 
         if (!bothPlayersReady)
         {
             Debug.LogWarning("GameSession: Les deux joueurs doivent être prêts pour démarrer");
+            onComplete?.Invoke(false);
             return;
         }
 
-        StartCoroutine(StartGameCoroutine(mapName));
+        StartCoroutine(StartGameCoroutine(mapName, onComplete));
     }
 
     [System.Serializable]
@@ -338,7 +343,7 @@ public class GameSessionManager : MonoBehaviour
         public string error;
     }
 
-    private IEnumerator StartGameCoroutine(string mapName)
+    private IEnumerator StartGameCoroutine(string mapName, Action<bool> onComplete)
     {
         string cleanBaseUrl = apiBaseUrl.Trim();
         string url = $"{cleanBaseUrl}/api/game/start";
@@ -374,16 +379,178 @@ public class GameSessionManager : MonoBehaviour
                     }
 
                     OnGameStarted?.Invoke();
+                    onComplete?.Invoke(true);
                 }
                 else
                 {
                     Debug.LogError($"GameSession: Échec du démarrage - {response.error}");
+                    onComplete?.Invoke(false);
                 }
             }
             else
             {
                 Debug.LogError($"GameSession: Erreur réseau - {request.error}");
                 Debug.LogError($"GameSession: Réponse - {request.downloadHandler.text}");
+                onComplete?.Invoke(false);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Relance la partie sur la même session (garde les mêmes pseudos)
+    /// À appeler quand on fait "Rejouer" après une partie terminée
+    /// </summary>
+    public void RestartGame(string mapName = "default", Action<bool> onComplete = null)
+    {
+        if (string.IsNullOrEmpty(sessionId))
+        {
+            Debug.LogError("GameSession: Impossible de relancer - pas de sessionId");
+            onComplete?.Invoke(false);
+            return;
+        }
+
+        StartCoroutine(RestartGameCoroutine(mapName, onComplete));
+    }
+
+    [System.Serializable]
+    private class RestartGameRequest
+    {
+        public string sessionId;
+        public string mapName;
+    }
+
+    [System.Serializable]
+    private class RestartGameResponse
+    {
+        public bool success;
+        public string message;
+        public string error;
+    }
+
+    private IEnumerator RestartGameCoroutine(string mapName, Action<bool> onComplete)
+    {
+        string cleanBaseUrl = apiBaseUrl.Trim();
+        string url = $"{cleanBaseUrl}/api/game/restart";
+
+        RestartGameRequest requestData = new RestartGameRequest
+        {
+            sessionId = sessionId,
+            mapName = mapName
+        };
+
+        string jsonData = JsonUtility.ToJson(requestData);
+
+        if (showDebug)
+        {
+            Debug.Log($"GameSession: Relance de la partie via {url}");
+        }
+
+        using (UnityWebRequest request = AnatidaeProxyWebRequest.Post(url, jsonData, "application/json"))
+        {
+            yield return request.SendWebRequest();
+
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                string responseText = request.downloadHandler.text;
+                RestartGameResponse response = JsonUtility.FromJson<RestartGameResponse>(responseText);
+
+                if (response.success)
+                {
+                    if (showDebug)
+                    {
+                        Debug.Log("GameSession: Partie relancée avec succès!");
+                    }
+
+                    OnGameRestarted?.Invoke();
+                    onComplete?.Invoke(true);
+                }
+                else
+                {
+                    Debug.LogError($"GameSession: Échec de la relance - {response.error}");
+                    onComplete?.Invoke(false);
+                }
+            }
+            else
+            {
+                Debug.LogError($"GameSession: Erreur réseau - {request.error}");
+                Debug.LogError($"GameSession: Réponse - {request.downloadHandler.text}");
+                onComplete?.Invoke(false);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Classes pour sérialiser les données en JSON
+    /// </summary>
+    [System.Serializable]
+    public class EndGameRequest
+    {
+        public string sessionId;
+        public PlayerScoreData[] scores;
+    }
+
+    [System.Serializable]
+    public class PlayerScoreData
+    {
+        public int playerNumber;
+        public int totalScore;
+        public float distanceTraveled;
+        public float survivalTime;
+        public int collectiblesCollected;
+        public bool hasFinished;
+    }
+
+    /// <summary>
+    /// Envoie les scores à l'API. Persistant entre les scènes.
+    /// </summary>
+    public void SendScores(PlayerScoreData[] scores, Action<bool> onComplete = null)
+    {
+        if (string.IsNullOrEmpty(sessionId))
+        {
+            Debug.LogWarning("GameSession: Pas de sessionId, impossible de sauvegarder les scores");
+            onComplete?.Invoke(false);
+            return;
+        }
+
+        StartCoroutine(SendScoresCoroutine(scores, onComplete));
+    }
+
+    private IEnumerator SendScoresCoroutine(PlayerScoreData[] scores, Action<bool> onComplete)
+    {
+        string cleanBaseUrl = apiBaseUrl.Trim();
+        string url = $"{cleanBaseUrl}/api/game/end";
+
+        EndGameRequest request = new EndGameRequest
+        {
+            sessionId = sessionId,
+            scores = scores
+        };
+
+        string jsonData = JsonUtility.ToJson(request);
+
+        if (showDebug)
+        {
+            Debug.Log($"GameSession: Envoi des scores à {url}");
+        }
+
+        using (UnityWebRequest webRequest = AnatidaeProxyWebRequest.Post(url, jsonData, "application/json"))
+        {
+            yield return webRequest.SendWebRequest();
+
+            if (webRequest.result == UnityWebRequest.Result.Success)
+            {
+                if (showDebug)
+                {
+                    Debug.Log($"GameSession: Scores sauvegardés avec succès!");
+                }
+                onComplete?.Invoke(true);
+            }
+            else
+            {
+                Debug.LogError($"GameSession: Erreur lors de la sauvegarde des scores - {webRequest.error}");
+                Debug.LogError($"GameSession: Réponse: {webRequest.downloadHandler.text}");
+                // On considère que ça a échoué, mais on ne bloque pas le jeu
+                onComplete?.Invoke(false);
             }
         }
     }
