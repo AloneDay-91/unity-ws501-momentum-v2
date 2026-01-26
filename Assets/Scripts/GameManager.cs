@@ -114,6 +114,11 @@ public class GameManager : MonoBehaviour
             if (PlayerNameManager.Instance != null)
             {
                 playerName = PlayerNameManager.Instance.GetPlayerName(playerID);
+                Debug.Log($"GameManager: Pseudo récupéré pour Joueur {playerID}: '{playerName}'");
+            }
+            else
+            {
+                Debug.LogWarning("GameManager: PlayerNameManager.Instance est null!");
             }
             playerNames[playerID] = playerName;
 
@@ -132,6 +137,61 @@ public class GameManager : MonoBehaviour
         if (showDebug)
         {
             Debug.Log($"GameManager: {totalPlayers} joueurs initialisés");
+        }
+    }
+
+    /// <summary>
+    /// Rafraîchit les pseudos des joueurs depuis PlayerNameManager ou GameSessionManager
+    /// Appelé juste avant d'afficher le GameOverPanel pour avoir les pseudos les plus récents
+    /// </summary>
+    private void RefreshPlayerNames()
+    {
+        if (showDebug)
+        {
+            Debug.Log("GameManager: Rafraîchissement des pseudos...");
+        }
+
+        // Tente de récupérer depuis GameSessionManager en priorité (données API)
+        if (GameSessionManager.Instance != null)
+        {
+            string p1Pseudo = GameSessionManager.Instance.player1Pseudo;
+            string p2Pseudo = GameSessionManager.Instance.player2Pseudo;
+
+            if (!string.IsNullOrEmpty(p1Pseudo))
+            {
+                playerNames[1] = p1Pseudo;
+                if (showDebug)
+                {
+                    Debug.Log($"GameManager: Pseudo Joueur 1 depuis GameSessionManager: '{p1Pseudo}'");
+                }
+            }
+
+            if (!string.IsNullOrEmpty(p2Pseudo))
+            {
+                playerNames[2] = p2Pseudo;
+                if (showDebug)
+                {
+                    Debug.Log($"GameManager: Pseudo Joueur 2 depuis GameSessionManager: '{p2Pseudo}'");
+                }
+            }
+        }
+
+        // Fallback: récupère depuis PlayerNameManager
+        if (PlayerNameManager.Instance != null)
+        {
+            foreach (var playerID in playerNames.Keys)
+            {
+                string updatedName = PlayerNameManager.Instance.GetPlayerName(playerID);
+                // Met à jour seulement si le nom n'est pas "Player X" par défaut
+                if (!updatedName.StartsWith("Player ") && !updatedName.StartsWith("Joueur "))
+                {
+                    playerNames[playerID] = updatedName;
+                    if (showDebug)
+                    {
+                        Debug.Log($"GameManager: Pseudo Joueur {playerID} depuis PlayerNameManager: '{updatedName}'");
+                    }
+                }
+            }
         }
     }
 
@@ -374,6 +434,9 @@ public class GameManager : MonoBehaviour
             player2EliminatedOverlay.SetActive(false);
         }
 
+        // IMPORTANT: Rafraîchit les pseudos depuis PlayerNameManager ou GameSessionManager
+        RefreshPlayerNames();
+
         // Affiche le GameOverPanel
         if (gameOverPanel != null)
         {
@@ -403,6 +466,10 @@ public class GameManager : MonoBehaviour
         {
             string winnerName = playerNames.ContainsKey(winnerID) ? playerNames[winnerID] : $"Joueur {winnerID}";
             winnerText.text = $"🏆 {winnerName} gagne!";
+            if (showDebug)
+            {
+                Debug.Log($"GameManager: Gagnant affiché: '{winnerName}' (ID: {winnerID})");
+            }
         }
 
         // Affiche tous les scores
@@ -415,6 +482,11 @@ public class GameManager : MonoBehaviour
                 scoresDisplay += $"{name}: {kvp.Value} pts\n";
             }
             scoresText.text = scoresDisplay;
+
+            if (showDebug)
+            {
+                Debug.Log($"GameManager: Scores affichés:\n{scoresDisplay}");
+            }
         }
 
         // La sélection du premier bouton est maintenant gérée par MenuPanelController sur le GameOverPanel

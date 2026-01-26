@@ -28,6 +28,9 @@ public class ScoreManager : MonoBehaviour
     [Header("Debug")]
     public bool showDebug = true;
 
+    // Événement déclenché quand le score d'un joueur change
+    public event System.Action<int, int> OnScoreChanged;
+
     // Scores des joueurs
     private Dictionary<int, PlayerScore> playerScores = new Dictionary<int, PlayerScore>();
     private bool hasEndedGame = false;
@@ -119,6 +122,9 @@ public class ScoreManager : MonoBehaviour
         if (playerScores.ContainsKey(playerID))
         {
             playerScores[playerID].collectiblesCollected++;
+
+            // Recalcule le score pour déclencher l'événement et les effets "juice"
+            CalculateScore(playerID);
         }
     }
 
@@ -139,11 +145,18 @@ public class ScoreManager : MonoBehaviour
         int collectibleScore = score.collectiblesCollected * 50; // 50 points par collectible
         int bonus = score.hasFinished ? finishBonus : 0;
 
+        int oldScore = score.totalScore;
         score.totalScore = distanceScore + timeScore + collectibleScore + bonus;
 
         if (showDebug)
         {
             Debug.Log($"Score Joueur {playerID}: Distance={distanceScore}, Temps={timeScore}, Collectibles={collectibleScore}, Bonus={bonus}, TOTAL={score.totalScore}");
+        }
+
+        // Déclenche l'événement seulement si le score a changé
+        if (score.totalScore != oldScore)
+        {
+            OnScoreChanged?.Invoke(playerID, score.totalScore);
         }
 
         return score.totalScore;
