@@ -496,8 +496,9 @@ public class GameSessionManager : MonoBehaviour
         public int totalScore;
         public float distanceTraveled;
         public float survivalTime;
-        public int collectiblesCollected;
-        public bool hasFinished;
+        public int collectiblesCollected;  // Orbes de lumière (10 pts chacun)
+        public int perfectJumps;           // Sauts parfaits (100 pts chacun)
+        public bool hasFinished;           // Terminé le parcours (1000 pts bonus)
     }
 
     /// <summary>

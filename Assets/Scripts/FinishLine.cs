@@ -91,8 +91,13 @@ public class FinishLine : MonoBehaviour
             int finalScore = ScoreManager.Instance != null ?
                 ScoreManager.Instance.GetPlayerScore(playerInput.playerID) : 0;
 
-            string playerName = $"Player {playerInput.playerID}";
-            GameManager.Instance.OnPlayerWin(playerName, finalScore);
+            // Appelle directement avec le playerID au lieu de passer par le nom
+            GameManager.Instance.OnPlayerFinished(playerInput.playerID, finalScore);
+
+            if (showDebug)
+            {
+                Debug.Log($"FinishLine: Joueur {playerInput.playerID} a terminé avec {finalScore} points");
+            }
         }
     }
 

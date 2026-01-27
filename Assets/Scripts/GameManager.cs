@@ -606,9 +606,49 @@ public class GameManager : MonoBehaviour
     /// </summary>
     public void QuitToMenu()
     {
+        StartCoroutine(QuitToMenuCoroutine());
+    }
+
+    private IEnumerator QuitToMenuCoroutine()
+    {
         Time.timeScale = 1f;
         Physics.autoSimulation = true; // Réactive la physique
         gameInProgress = false;
+
+        // Sauvegarde les scores avant de quitter (même si les joueurs n'ont pas tous terminé)
+        bool scoresSaved = false;
+        bool scoresComplete = false;
+
+        if (ScoreManager.Instance != null)
+        {
+            if (showDebug)
+            {
+                Debug.Log("GameManager: Sauvegarde des scores avant de quitter...");
+            }
+            ScoreManager.Instance.SaveScoresNow((success) =>
+            {
+                scoresSaved = success;
+                scoresComplete = true;
+                if (showDebug)
+                {
+                    Debug.Log($"GameManager: Scores sauvegardés: {success}");
+                }
+            });
+
+            // Attend que la sauvegarde soit terminée (timeout de 5 secondes)
+            float timeout = 5f;
+            float elapsed = 0f;
+            while (!scoresComplete && elapsed < timeout)
+            {
+                yield return new WaitForSeconds(0.1f);
+                elapsed += 0.1f;
+            }
+
+            if (!scoresComplete && showDebug)
+            {
+                Debug.LogWarning("GameManager: Timeout lors de la sauvegarde des scores");
+            }
+        }
 
         // Réinitialise la session
         if (GameSessionManager.Instance != null)

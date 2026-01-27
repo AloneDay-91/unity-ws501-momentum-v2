@@ -156,10 +156,10 @@ public class LuminousOrb : MonoBehaviour
             // On donne la luminescence au joueur
             playerStats.AddLuminescence(luminescenceAmount);
 
-            // Ajoute un collectible au score du joueur
+            // Ajoute un orbe au score du joueur
             if (ScoreManager.Instance != null && playerInput != null)
             {
-                ScoreManager.Instance.AddCollectible(playerInput.playerID);
+                ScoreManager.Instance.AddOrb(playerInput.playerID);
             }
 
             // --- EFFETS DE JUICE ---

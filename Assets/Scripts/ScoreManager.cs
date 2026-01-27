@@ -16,14 +16,20 @@ public class ScoreManager : MonoBehaviour
     [Tooltip("Nom de la carte actuelle (pour différencier les scores par carte)")]
     public string currentMapName = "Map1";
 
-    [Tooltip("Points par unité de distance parcourue")]
-    public float pointsPerDistance = 10f;
+    [Tooltip("Points par orbe de lumière collecté")]
+    public int pointsPerOrb = 10;
 
-    [Tooltip("Points par seconde de survie")]
-    public float pointsPerSecond = 5f;
+    [Tooltip("Points par saut parfait (bon timing sur obstacle)")]
+    public int pointsPerPerfectJump = 100;
 
     [Tooltip("Bonus pour avoir terminé le parcours")]
     public int finishBonus = 1000;
+
+    [Tooltip("Points par unité de distance (désactivé si 0)")]
+    public float pointsPerDistance = 0f;
+
+    [Tooltip("Points par seconde de survie (désactivé si 0)")]
+    public float pointsPerSecond = 0f;
 
     [Header("Debug")]
     public bool showDebug = true;
@@ -41,11 +47,16 @@ public class ScoreManager : MonoBehaviour
         public int playerID;
         public float distanceTraveled;
         public float survivalTime;
-        public int collectiblesCollected;
-        public bool hasFinished;      // A terminé le parcours (victoire)
-        public bool isEliminated;     // A été éliminé
-        public bool isGameOver;       // La partie est finie pour ce joueur (fini OU éliminé)
+        public int orbsCollected;         // Orbes de lumière collectés
+        public int perfectJumps;          // Sauts parfaits sur obstacles
+        public bool hasFinished;          // A terminé le parcours (victoire)
+        public bool isEliminated;         // A été éliminé
+        public bool isGameOver;           // La partie est finie pour ce joueur (fini OU éliminé)
         public int totalScore;
+
+        // Legacy
+        [System.Obsolete("Utilisez orbsCollected à la place")]
+        public int collectiblesCollected => orbsCollected;
     }
 
     void Awake()
@@ -78,7 +89,8 @@ public class ScoreManager : MonoBehaviour
                 playerID = playerID,
                 distanceTraveled = 0f,
                 survivalTime = 0f,
-                collectiblesCollected = 0,
+                orbsCollected = 0,
+                perfectJumps = 0,
                 hasFinished = false,
                 isEliminated = false,
                 isGameOver = false,
@@ -115,17 +127,50 @@ public class ScoreManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Ajoute un collectible au score du joueur
+    /// Ajoute un orbe de lumière au score du joueur
     /// </summary>
-    public void AddCollectible(int playerID)
+    public void AddOrb(int playerID)
     {
         if (playerScores.ContainsKey(playerID))
         {
-            playerScores[playerID].collectiblesCollected++;
+            playerScores[playerID].orbsCollected++;
 
             // Recalcule le score pour déclencher l'événement et les effets "juice"
             CalculateScore(playerID);
+
+            if (showDebug)
+            {
+                Debug.Log($"ScoreManager: Joueur {playerID} a collecté un orbe (+{pointsPerOrb} pts)");
+            }
         }
+    }
+
+    /// <summary>
+    /// Ajoute un saut parfait au score du joueur
+    /// </summary>
+    public void AddPerfectJump(int playerID)
+    {
+        if (playerScores.ContainsKey(playerID))
+        {
+            playerScores[playerID].perfectJumps++;
+
+            // Recalcule le score pour déclencher l'événement et les effets "juice"
+            CalculateScore(playerID);
+
+            if (showDebug)
+            {
+                Debug.Log($"ScoreManager: Joueur {playerID} a réussi un saut parfait (+{pointsPerPerfectJump} pts)");
+            }
+        }
+    }
+
+    /// <summary>
+    /// [OBSOLETE] Ajoute un collectible au score du joueur - Utilisez AddOrb() à la place
+    /// </summary>
+    [System.Obsolete("Utilisez AddOrb() à la place")]
+    public void AddCollectible(int playerID)
+    {
+        AddOrb(playerID);
     }
 
     /// <summary>
@@ -140,17 +185,21 @@ public class ScoreManager : MonoBehaviour
 
         PlayerScore score = playerScores[playerID];
 
+        // Nouveau système de scoring basé sur les actions
+        int orbScore = score.orbsCollected * pointsPerOrb;                    // 10 pts par orbe
+        int jumpScore = score.perfectJumps * pointsPerPerfectJump;            // 100 pts par saut parfait
+        int finishScore = score.hasFinished ? finishBonus : 0;                // 1000 pts pour terminer
+
+        // Ancien système (optionnel, désactivé par défaut)
         int distanceScore = Mathf.RoundToInt(score.distanceTraveled * pointsPerDistance);
         int timeScore = Mathf.RoundToInt(score.survivalTime * pointsPerSecond);
-        int collectibleScore = score.collectiblesCollected * 50; // 50 points par collectible
-        int bonus = score.hasFinished ? finishBonus : 0;
 
         int oldScore = score.totalScore;
-        score.totalScore = distanceScore + timeScore + collectibleScore + bonus;
+        score.totalScore = orbScore + jumpScore + finishScore + distanceScore + timeScore;
 
         if (showDebug)
         {
-            Debug.Log($"Score Joueur {playerID}: Distance={distanceScore}, Temps={timeScore}, Collectibles={collectibleScore}, Bonus={bonus}, TOTAL={score.totalScore}");
+            Debug.Log($"Score Joueur {playerID}: Orbes={orbScore}, Sauts Parfaits={jumpScore}, Terminé={finishScore}, Distance={distanceScore}, Temps={timeScore}, TOTAL={score.totalScore}");
         }
 
         // Déclenche l'événement seulement si le score a changé
@@ -247,10 +296,25 @@ public class ScoreManager : MonoBehaviour
 
     /// <summary>
     /// Sauvegarde les scores manuellement (appelé au Quit)
+    /// Envoie les scores même si tous les joueurs n'ont pas terminé
     /// </summary>
     public void SaveScoresNow(System.Action<bool> onComplete = null)
     {
-        SendScoresToAPI(onComplete);
+        // Envoie les scores seulement s'ils n'ont pas déjà été envoyés
+        if (!hasEndedGame)
+        {
+            hasEndedGame = true; // Marque comme envoyé pour éviter les doublons
+            SendScoresToAPI(onComplete);
+            StartCoroutine(SendScoresToArcade());
+        }
+        else
+        {
+            if (showDebug)
+            {
+                Debug.Log("ScoreManager: Scores déjà envoyés, skip.");
+            }
+            onComplete?.Invoke(true);
+        }
     }
 
     /// <summary>
@@ -307,7 +371,8 @@ public class ScoreManager : MonoBehaviour
                 totalScore = score.totalScore,
                 distanceTraveled = score.distanceTraveled,
                 survivalTime = score.survivalTime,
-                collectiblesCollected = score.collectiblesCollected,
+                collectiblesCollected = score.orbsCollected,    // Orbes de lumière
+                perfectJumps = score.perfectJumps,              // Sauts parfaits
                 hasFinished = score.hasFinished
             });
         }

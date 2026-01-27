@@ -154,7 +154,13 @@ public class ParkourController : MonoBehaviour
         {
             animator.SetTrigger("doVault");
         }
-        
+
+        // SAUT PARFAIT - Ajoute 100 points au score
+        if (ScoreManager.Instance != null && playerInput != null)
+        {
+            ScoreManager.Instance.AddPerfectJump(playerInput.playerID);
+        }
+
         playerMovement.enabled = false;
         rb.useGravity = false;
         
