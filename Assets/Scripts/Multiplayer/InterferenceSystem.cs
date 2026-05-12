@@ -1,12 +1,10 @@
 using UnityEngine;
 #if WEB_BUILD
-using System.Collections.Generic;
-using Colyseus.Schema;
+using System;
 #endif
 
 public class InterferenceSystem : MonoBehaviour
 {
-    // --- Singleton Pattern ---
     public static InterferenceSystem Instance { get; private set; }
 
     [Header("Références des Joueurs")]
@@ -32,6 +30,9 @@ public class InterferenceSystem : MonoBehaviour
     }
 
 #if WEB_BUILD
+    private bool _previousIsStunned = false;
+    private Action _removeOnChange;
+
     void Start()
     {
         if (NetworkManager.Instance != null)
@@ -46,24 +47,27 @@ public class InterferenceSystem : MonoBehaviour
         {
             NetworkManager.Instance.OnPlayerAdded -= HandlePlayerAdded;
         }
+        _removeOnChange?.Invoke();
+        _removeOnChange = null;
     }
 
     private void HandlePlayerAdded(string sessionId, PlayerState state)
     {
-        // Only listen to OUR own state — that's where the server says we got stunned
+        // Listen only to OUR own state — the server toggles isStunned on us when we get hit
         if (NetworkManager.Instance == null || sessionId != NetworkManager.Instance.MySessionId) return;
+        if (NetworkManager.Instance.Callbacks == null) return;
 
-        state.OnChange += (List<DataChange> changes) =>
+        _previousIsStunned = state.isStunned;
+        _removeOnChange = NetworkManager.Instance.Callbacks.OnChange(state, () =>
         {
-            foreach (var c in changes)
+            // Detect false → true transition
+            if (state.isStunned && !_previousIsStunned)
             {
-                if (c.Field == "isStunned" && c.Value is bool isStunned && isStunned)
-                {
-                    var localMovement = FindLocalPlayerMovement();
-                    if (localMovement != null) localMovement.ApplyStun(stunDuration);
-                }
+                var localMovement = FindLocalPlayerMovement();
+                if (localMovement != null) localMovement.ApplyStun(stunDuration);
             }
-        };
+            _previousIsStunned = state.isStunned;
+        });
     }
 
     private PlayerMovement FindLocalPlayerMovement()
@@ -73,30 +77,19 @@ public class InterferenceSystem : MonoBehaviour
     }
 #endif
 
-    // Fonction appelée par PlayerLight.cs
     public void AttemptInterference(int attackerPlayerID)
     {
 #if WEB_BUILD
         NetworkManager.Instance?.SendStun();
         return;
 #else
-        // Si le joueur 1 attaque...
         if (attackerPlayerID == 1)
         {
-            // ...on étourdit le joueur 2
-            if (player2 != null)
-            {
-                player2.ApplyStun(stunDuration);
-            }
+            if (player2 != null) player2.ApplyStun(stunDuration);
         }
-        // Si le joueur 2 attaque...
         else if (attackerPlayerID == 2)
         {
-            // ...on étourdit le joueur 1
-            if (player1 != null)
-            {
-                player1.ApplyStun(stunDuration);
-            }
+            if (player1 != null) player1.ApplyStun(stunDuration);
         }
 #endif
     }

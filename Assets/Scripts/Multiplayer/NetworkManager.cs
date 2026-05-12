@@ -1,9 +1,11 @@
 #if WEB_BUILD
 using System;
 using System.Collections.Generic;
+using System.Linq.Expressions;
 using System.Threading.Tasks;
 using UnityEngine;
 using Colyseus;
+using Colyseus.Schema;
 
 public class NetworkManager : MonoBehaviour
 {
@@ -12,8 +14,9 @@ public class NetworkManager : MonoBehaviour
     [Header("Server")]
     public string serverUrl = "ws://localhost:2567";
 
-    public ColyseusClient Client { get; private set; }
-    public ColyseusRoom<GameState> Room { get; private set; }
+    public Colyseus.Client Client { get; private set; }
+    public Colyseus.Room<GameState> Room { get; private set; }
+    public StateCallbackStrategy<GameState> Callbacks { get; private set; }
     public string MySessionId => Room?.SessionId ?? "";
     public bool IsConnecting { get; private set; } = false;
 
@@ -22,9 +25,9 @@ public class NetworkManager : MonoBehaviour
     public event Action OnConnected;
     public event Action<string> OnConnectionFailed;
 
-    // Store delegates so we can unsubscribe
-    private Action<string, PlayerState> _onAddHandler;
-    private Action<string, PlayerState> _onRemoveHandler;
+    // Returned by Callbacks.OnAdd / OnRemove — call to unsubscribe
+    private Action _removeOnAdd;
+    private Action _removeOnRemove;
 
     void Awake()
     {
@@ -61,10 +64,9 @@ public class NetworkManager : MonoBehaviour
         IsConnecting = true;
         try
         {
-            // Cleanup any prior subscriptions
             UnsubscribeRoomEvents();
 
-            Client = new ColyseusClient(serverUrl);
+            Client = new Colyseus.Client(serverUrl);
             var options = new Dictionary<string, object>
             {
                 { "sessionId", sessionId },
@@ -73,10 +75,13 @@ public class NetworkManager : MonoBehaviour
             Room = await Client.JoinOrCreate<GameState>("momentum", options);
             Debug.Log($"[NetworkManager] Joined room {Room.RoomId} as {Room.SessionId}");
 
-            _onAddHandler = (sId, player) => OnPlayerAdded?.Invoke(sId, player);
-            _onRemoveHandler = (sId, _) => OnPlayerRemoved?.Invoke(sId);
-            Room.State.players.OnAdd += _onAddHandler;
-            Room.State.players.OnRemove += _onRemoveHandler;
+            Callbacks = Colyseus.Schema.Callbacks.Get(Room);
+            _removeOnAdd = Callbacks.OnAdd<PlayerState>(
+                s => s.players,
+                (sId, player) => OnPlayerAdded?.Invoke(sId, player));
+            _removeOnRemove = Callbacks.OnRemove<PlayerState>(
+                s => s.players,
+                (sId, _) => OnPlayerRemoved?.Invoke(sId));
 
             OnConnected?.Invoke();
         }
@@ -93,13 +98,10 @@ public class NetworkManager : MonoBehaviour
 
     private void UnsubscribeRoomEvents()
     {
-        if (Room?.State?.players != null)
-        {
-            if (_onAddHandler != null) Room.State.players.OnAdd -= _onAddHandler;
-            if (_onRemoveHandler != null) Room.State.players.OnRemove -= _onRemoveHandler;
-        }
-        _onAddHandler = null;
-        _onRemoveHandler = null;
+        _removeOnAdd?.Invoke();
+        _removeOnRemove?.Invoke();
+        _removeOnAdd = null;
+        _removeOnRemove = null;
     }
 
     public void SendInput(PlayerInputPayload payload) => Room?.Send("input", payload);
