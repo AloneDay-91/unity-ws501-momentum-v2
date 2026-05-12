@@ -1,3 +1,4 @@
+#if !WEB_BUILD
 using UnityEngine;
 
 /// <summary>
@@ -181,3 +182,4 @@ public class SplitScreenManager : MonoBehaviour
         }
     }
 }
+#endif

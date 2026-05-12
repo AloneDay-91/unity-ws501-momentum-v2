@@ -32,6 +32,9 @@ public class PlayerInput : MonoBehaviour
 
     void Start()
     {
+#if WEB_BUILD
+        playerID = 1;
+#endif
         horizontalAxisName = "P" + playerID + "_Horizontal";
         verticalAxisName = "P" + playerID + "_Vertical";
         jumpButtonName = "P" + playerID + "_B1"; 

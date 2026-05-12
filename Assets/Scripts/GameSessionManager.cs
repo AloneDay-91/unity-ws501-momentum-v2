@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.Networking;
 using System.Collections;
+using System.Collections.Generic;
 using System;
 using Anatidae;
 
@@ -556,6 +557,122 @@ public class GameSessionManager : MonoBehaviour
         }
     }
 
+#if WEB_BUILD
+    // -------------------------------------------------------------------------
+    // WEB_BUILD multiplayer — scene-objects approach
+    // Players are pre-placed in the scene. P2 is disabled in web mode.
+    // LocalPlayerSync is added to P1. Remote players are driven by NetworkPlayer.
+    // -------------------------------------------------------------------------
+
+    private Dictionary<string, GameObject> remoteNetworkPlayers = new Dictionary<string, GameObject>();
+
+    /// <summary>
+    /// Call this from the game scene's initialisation (e.g. a GameCycleManager or
+    /// a scene-load callback) once players are known to be in the scene.
+    /// In arcade mode this method is compiled away.
+    /// </summary>
+    public void InitWebMode()
+    {
+        // Find local players by tag (tagged "Player") or by PlayerInput component
+        PlayerInput[] allInputs = FindObjectsOfType<PlayerInput>();
+        GameObject p1Go = null;
+        GameObject p2Go = null;
+
+        foreach (var pi in allInputs)
+        {
+            if (pi.playerID == 1) p1Go = pi.gameObject;
+            else if (pi.playerID == 2) p2Go = pi.gameObject;
+        }
+
+        // Disable P2 — only one local player in web mode
+        if (p2Go != null)
+        {
+            p2Go.SetActive(false);
+            if (showDebug) Debug.Log("[GameSessionManager] WEB_BUILD: P2 disabled");
+        }
+        else
+        {
+            if (showDebug) Debug.Log("[GameSessionManager] WEB_BUILD: No P2 found in scene — nothing to disable");
+        }
+
+        // Add LocalPlayerSync to P1
+        if (p1Go != null)
+        {
+            if (p1Go.GetComponent<LocalPlayerSync>() == null)
+                p1Go.AddComponent<LocalPlayerSync>();
+            if (showDebug) Debug.Log("[GameSessionManager] WEB_BUILD: LocalPlayerSync attached to P1");
+        }
+        else
+        {
+            Debug.LogError("[GameSessionManager] WEB_BUILD: Could not find P1 (playerID == 1) in scene");
+        }
+
+        // Subscribe to remote player events
+        if (NetworkManager.Instance != null)
+        {
+            NetworkManager.Instance.OnPlayerAdded += HandleRemotePlayerAdded;
+            NetworkManager.Instance.OnPlayerRemoved += HandleRemotePlayerRemoved;
+            if (showDebug) Debug.Log("[GameSessionManager] WEB_BUILD: Subscribed to NetworkManager events");
+        }
+        else
+        {
+            Debug.LogError("[GameSessionManager] WEB_BUILD: NetworkManager.Instance is null — make sure WebBootstrap+NetworkManager are in the scene before GameSessionManager runs");
+        }
+    }
+
+    private void HandleRemotePlayerAdded(string remoteSessionId, PlayerState state)
+    {
+        // Skip if this is our own session
+        if (NetworkManager.Instance != null && remoteSessionId == NetworkManager.Instance.MySessionId)
+            return;
+
+        if (remoteNetworkPlayers.ContainsKey(remoteSessionId))
+        {
+            if (showDebug) Debug.LogWarning($"[GameSessionManager] WEB_BUILD: Remote player {remoteSessionId} already tracked — skipping");
+            return;
+        }
+
+        // Spawn a copy of P1 to use as the remote-player puppet
+        PlayerInput[] allInputs = FindObjectsOfType<PlayerInput>();
+        GameObject p1Go = null;
+        foreach (var pi in allInputs)
+        {
+            if (pi.playerID == 1) { p1Go = pi.gameObject; break; }
+        }
+
+        if (p1Go == null)
+        {
+            Debug.LogError("[GameSessionManager] WEB_BUILD: Cannot find P1 to clone for remote player");
+            return;
+        }
+
+        // Determine spawn position: playerNumber == 2 → use P1 position offset; else same spot
+        Vector3 spawnPos = p1Go.transform.position;
+        var go = Instantiate(p1Go, spawnPos, p1Go.transform.rotation);
+        go.name = $"RemotePlayer_{remoteSessionId}";
+
+        // Remove LocalPlayerSync if it was copied along
+        var lps = go.GetComponent<LocalPlayerSync>();
+        if (lps != null) Destroy(lps);
+
+        var netPlayer = go.AddComponent<NetworkPlayer>();
+        netPlayer.Bind(state);
+
+        remoteNetworkPlayers[remoteSessionId] = go;
+        if (showDebug) Debug.Log($"[GameSessionManager] WEB_BUILD: Remote player spawned for session {remoteSessionId}");
+    }
+
+    private void HandleRemotePlayerRemoved(string remoteSessionId)
+    {
+        if (remoteNetworkPlayers.TryGetValue(remoteSessionId, out var go))
+        {
+            Destroy(go);
+            remoteNetworkPlayers.Remove(remoteSessionId);
+            if (showDebug) Debug.Log($"[GameSessionManager] WEB_BUILD: Remote player removed for session {remoteSessionId}");
+        }
+    }
+#endif
+
     /// <summary>
     /// Réinitialise la session
     /// </summary>
@@ -582,5 +699,12 @@ public class GameSessionManager : MonoBehaviour
     void OnDestroy()
     {
         StopPolling();
+#if WEB_BUILD
+        if (NetworkManager.Instance != null)
+        {
+            NetworkManager.Instance.OnPlayerAdded -= HandleRemotePlayerAdded;
+            NetworkManager.Instance.OnPlayerRemoved -= HandleRemotePlayerRemoved;
+        }
+#endif
     }
 }
