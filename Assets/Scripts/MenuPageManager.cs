@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using System.Collections.Generic;
 
 /// <summary>
@@ -47,6 +48,18 @@ public class MenuPageManager : MonoBehaviour
 
     void Start()
     {
+#if WEB_BUILD
+        // En multijoueur web, on saute tout le menu (QR codes, lobby de borne...)
+        // et on charge directement la scène de jeu.
+        if (WebBootstrap.IsReady)
+        {
+            if (showDebug) Debug.Log("[MenuPageManager] WEB_BUILD detected with valid session — skipping menu, loading 'main' scene");
+            SceneManager.LoadScene("main");
+            return;
+        }
+        Debug.LogWarning("[MenuPageManager] WEB_BUILD but no sessionId/token in URL — falling back to menu");
+#endif
+
         // Enregistre toutes les pages
         if (homePage != null) pages["home"] = homePage;
         if (qrCodePage != null) pages["qrcode"] = qrCodePage;

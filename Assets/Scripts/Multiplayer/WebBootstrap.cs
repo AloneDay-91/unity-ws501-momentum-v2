@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using System.Runtime.InteropServices;
 
 public class WebBootstrap : MonoBehaviour
@@ -16,23 +17,33 @@ public class WebBootstrap : MonoBehaviour
     {
         DontDestroyOnLoad(gameObject);
         ReadParams();
+        SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    void OnDestroy()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
     }
 
     void Start()
     {
+        // Initial scene case (in case the boot scene IS already the game scene)
+        TryInitWebModeForCurrentScene();
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        TryInitWebModeForCurrentScene();
+    }
+
+    private void TryInitWebModeForCurrentScene()
+    {
 #if WEB_BUILD
-        if (!IsReady)
+        if (!IsReady) return;
+        var gsm = GameSessionManager.Instance ?? FindObjectOfType<GameSessionManager>();
+        if (gsm != null)
         {
-            Debug.LogError("[WebBootstrap] sessionId or token missing — cannot initialize web mode");
-            return;
-        }
-        if (GameSessionManager.Instance != null)
-        {
-            GameSessionManager.Instance.InitWebMode();
-        }
-        else
-        {
-            Debug.LogError("[WebBootstrap] No GameSessionManager found in scene");
+            gsm.InitWebMode();
         }
 #endif
     }
