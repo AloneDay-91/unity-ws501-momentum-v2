@@ -651,12 +651,28 @@ public class GameSessionManager : MonoBehaviour
         var go = Instantiate(p1Go, spawnPos, p1Go.transform.rotation);
         go.name = $"RemotePlayer_{remoteSessionId}";
 
+        // Suppress any Update() ticks until Bind() has neutralized the clone's components
+        go.SetActive(false);
+
+        // Disable cloned cameras and audio listeners — the remote player must not render its own viewport
+        foreach (var cam in go.GetComponentsInChildren<Camera>(includeInactive: true))
+        {
+            cam.enabled = false;
+        }
+        foreach (var listener in go.GetComponentsInChildren<AudioListener>(includeInactive: true))
+        {
+            listener.enabled = false;
+        }
+
         // Remove LocalPlayerSync if it was copied along
         var lps = go.GetComponent<LocalPlayerSync>();
         if (lps != null) Destroy(lps);
 
         var netPlayer = go.AddComponent<NetworkPlayer>();
         netPlayer.Bind(state);
+
+        // Resume update lifecycle now that the clone is fully configured
+        go.SetActive(true);
 
         remoteNetworkPlayers[remoteSessionId] = go;
         if (showDebug) Debug.Log($"[GameSessionManager] WEB_BUILD: Remote player spawned for session {remoteSessionId}");

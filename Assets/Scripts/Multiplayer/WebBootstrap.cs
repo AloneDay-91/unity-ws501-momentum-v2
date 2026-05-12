@@ -18,6 +18,25 @@ public class WebBootstrap : MonoBehaviour
         ReadParams();
     }
 
+    void Start()
+    {
+#if WEB_BUILD
+        if (!IsReady)
+        {
+            Debug.LogError("[WebBootstrap] sessionId or token missing — cannot initialize web mode");
+            return;
+        }
+        if (GameSessionManager.Instance != null)
+        {
+            GameSessionManager.Instance.InitWebMode();
+        }
+        else
+        {
+            Debug.LogError("[WebBootstrap] No GameSessionManager found in scene");
+        }
+#endif
+    }
+
     private void ReadParams()
     {
 #if UNITY_WEBGL && !UNITY_EDITOR
