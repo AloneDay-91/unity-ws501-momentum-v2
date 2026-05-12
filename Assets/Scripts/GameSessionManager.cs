@@ -617,10 +617,10 @@ public class GameSessionManager : MonoBehaviour
             // Catch up: if Room already has players, replay them now (subscribing late shouldn't lose existing players)
             if (NetworkManager.Instance.Room != null && NetworkManager.Instance.Room.State != null && NetworkManager.Instance.Room.State.players != null)
             {
-                foreach (var kvp in NetworkManager.Instance.Room.State.players)
+                NetworkManager.Instance.Room.State.players.ForEach((sId, ps) =>
                 {
-                    HandleRemotePlayerAdded(kvp.Key, kvp.Value);
-                }
+                    HandleRemotePlayerAdded(sId, ps);
+                });
             }
         }
         else
