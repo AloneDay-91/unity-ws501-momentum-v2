@@ -613,6 +613,15 @@ public class GameSessionManager : MonoBehaviour
             NetworkManager.Instance.OnPlayerAdded += HandleRemotePlayerAdded;
             NetworkManager.Instance.OnPlayerRemoved += HandleRemotePlayerRemoved;
             if (showDebug) Debug.Log("[GameSessionManager] WEB_BUILD: Subscribed to NetworkManager events");
+
+            // Catch up: if Room already has players, replay them now (subscribing late shouldn't lose existing players)
+            if (NetworkManager.Instance.Room != null && NetworkManager.Instance.Room.State != null && NetworkManager.Instance.Room.State.players != null)
+            {
+                foreach (var kvp in NetworkManager.Instance.Room.State.players)
+                {
+                    HandleRemotePlayerAdded(kvp.Key, kvp.Value);
+                }
+            }
         }
         else
         {

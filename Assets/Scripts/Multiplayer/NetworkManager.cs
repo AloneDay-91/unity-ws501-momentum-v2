@@ -29,6 +29,14 @@ public class NetworkManager : MonoBehaviour
     private Action _removeOnAdd;
     private Action _removeOnRemove;
 
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+    private static void AutoBootstrap()
+    {
+        if (FindObjectOfType<NetworkManager>() != null) return;
+        var go = new GameObject("NetworkManager (auto)");
+        go.AddComponent<NetworkManager>();
+    }
+
     void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
