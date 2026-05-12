@@ -13,8 +13,24 @@ public class WebBootstrap : MonoBehaviour
     private static extern string GetUrlParam(string key);
 #endif
 
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+    private static void AutoBootstrap()
+    {
+        // Auto-create the WebBootstrap GameObject before any scene loads,
+        // so that MenuPageManager.Start() can read WebBootstrap.IsReady reliably.
+        if (FindObjectOfType<WebBootstrap>() != null) return;
+        var go = new GameObject("WebBootstrap (auto)");
+        go.AddComponent<WebBootstrap>();
+    }
+
     void Awake()
     {
+        // Singleton-ish: if a duplicate exists (e.g., manually placed in scene), keep the first
+        if (FindObjectsOfType<WebBootstrap>().Length > 1)
+        {
+            Destroy(gameObject);
+            return;
+        }
         DontDestroyOnLoad(gameObject);
         ReadParams();
         SceneManager.sceneLoaded += OnSceneLoaded;
