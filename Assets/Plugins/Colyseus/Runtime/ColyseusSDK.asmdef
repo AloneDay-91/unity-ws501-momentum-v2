@@ -1,0 +1,6 @@
+{
+	"name": "ColyseusSDK",
+	"references": [
+		"endel.nativewebsocket"
+	]
+}
