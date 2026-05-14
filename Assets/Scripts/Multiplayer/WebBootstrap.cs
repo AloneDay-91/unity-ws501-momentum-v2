@@ -6,6 +6,7 @@ public class WebBootstrap : MonoBehaviour
 {
     public static string SessionId { get; private set; } = "";
     public static string Token { get; private set; } = "";
+    public static string WsUrl { get; private set; } = "";
     public static bool IsReady { get; private set; } = false;
 
 #if UNITY_WEBGL && !UNITY_EDITOR
@@ -71,12 +72,14 @@ public class WebBootstrap : MonoBehaviour
 #if UNITY_WEBGL && !UNITY_EDITOR
         SessionId = GetUrlParam("sessionId") ?? "";
         Token = GetUrlParam("token") ?? "";
+        WsUrl = GetUrlParam("wsUrl") ?? "";
 #else
         // In Editor, read from PlayerPrefs to ease dev testing
         SessionId = PlayerPrefs.GetString("DEBUG_SESSION_ID", "TEST-ROOM");
         Token = PlayerPrefs.GetString("DEBUG_TOKEN", "tok-p1");
+        WsUrl = PlayerPrefs.GetString("DEBUG_WS_URL", "");
 #endif
         IsReady = !string.IsNullOrEmpty(SessionId) && !string.IsNullOrEmpty(Token);
-        Debug.Log($"[WebBootstrap] sessionId={SessionId}, hasToken={!string.IsNullOrEmpty(Token)}");
+        Debug.Log($"[WebBootstrap] sessionId={SessionId}, hasToken={!string.IsNullOrEmpty(Token)}, wsUrl={WsUrl}");
     }
 }

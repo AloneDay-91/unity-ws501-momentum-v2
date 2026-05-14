@@ -75,13 +75,14 @@ public class NetworkManager : MonoBehaviour
         {
             UnsubscribeRoomEvents();
 
-            Client = new Colyseus.Client(serverUrl);
+            var url = !string.IsNullOrEmpty(WebBootstrap.WsUrl) ? WebBootstrap.WsUrl : serverUrl;
+            Client = new Colyseus.Client(url);
             var options = new Dictionary<string, object>
             {
                 { "sessionId", sessionId },
                 { "token", token },
             };
-            Debug.Log($"[DIAG][NetworkManager] Calling JoinOrCreate at T={Time.realtimeSinceStartup:F3}s, url={serverUrl}, sessionId='{sessionId}'");
+            Debug.Log($"[DIAG][NetworkManager] Calling JoinOrCreate at T={Time.realtimeSinceStartup:F3}s, url={url}, sessionId='{sessionId}'");
             Room = await Client.JoinOrCreate<GameState>("momentum", options);
             Debug.Log($"[NetworkManager] Joined room {Room.RoomId} as {Room.SessionId}");
             Debug.Log($"[DIAG][NetworkManager] JoinOrCreate returned at T={Time.realtimeSinceStartup:F3}s. State.players count={(Room.State?.players != null ? Room.State.players.Count.ToString() : "null")}");
