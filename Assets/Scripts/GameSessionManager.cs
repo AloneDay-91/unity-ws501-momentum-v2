@@ -88,6 +88,19 @@ public class GameSessionManager : MonoBehaviour
     /// </summary>
     public void CreateGameSession()
     {
+#if WEB_BUILD
+        // In iframe multiplayer the Next.js lobby created the session before Unity loaded;
+        // its id arrived via URL param (WebBootstrap.SessionId → assigned in InitWebMode).
+        // Calling /api/game/session here would create a parallel b45e07… row and overwrite
+        // our sessionId — scores would then attach to that orphan session and never appear
+        // at /classement/[the-lobby-code]. Just skip and reuse the inherited id.
+        if (!string.IsNullOrEmpty(sessionId))
+        {
+            if (showDebug) Debug.Log($"[GameSessionManager] WEB_BUILD: CreateGameSession skipped — reusing inherited sessionId='{sessionId}'");
+            OnSessionCreated?.Invoke();
+            return;
+        }
+#endif
         StartCoroutine(CreateSessionCoroutine());
     }
 
@@ -584,6 +597,16 @@ public class GameSessionManager : MonoBehaviour
     public void InitWebMode()
     {
         Debug.Log($"[DIAG][GameSessionManager] InitWebMode called at T={Time.realtimeSinceStartup:F3}s in scene='{UnityEngine.SceneManagement.SceneManager.GetActiveScene().name}'. NetworkManager.Instance={(NetworkManager.Instance != null ? "OK" : "NULL")}, Room={(NetworkManager.Instance?.Room != null ? "OK" : "NULL")}, Room.State={(NetworkManager.Instance?.Room?.State != null ? "OK" : "NULL")}, players count={(NetworkManager.Instance?.Room?.State?.players != null ? NetworkManager.Instance.Room.State.players.Count.ToString() : "null")}, MySId='{NetworkManager.Instance?.MySessionId ?? "null"}'");
+
+        // Inherit the Next.js DB sessionId from the iframe URL param — this is the same id
+        // used by /classement/[sessionId], so scores POSTed via SendScores end up attached
+        // to the session the player sees on the recap page. Without this, CreateGameSession
+        // would create a separate b45e07… row and scores would be invisible at /classement/DV4GB3.
+        if (!string.IsNullOrEmpty(WebBootstrap.SessionId))
+        {
+            sessionId = WebBootstrap.SessionId;
+            if (showDebug) Debug.Log($"[GameSessionManager] WEB_BUILD: sessionId inherited from iframe URL = '{sessionId}'");
+        }
 
         // Find both player GameObjects in the scene — keep references but DO NOT disable
         // either yet. Server-assigned playerNumber decides which slot is "us" (red P1 or blue P2),

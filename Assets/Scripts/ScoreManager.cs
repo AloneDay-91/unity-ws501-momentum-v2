@@ -290,7 +290,9 @@ public class ScoreManager : MonoBehaviour
 
             hasEndedGame = true;
             SendScoresToAPI();
+#if !WEB_BUILD
             StartCoroutine(SendScoresToArcade());
+#endif
         }
     }
 
@@ -305,7 +307,9 @@ public class ScoreManager : MonoBehaviour
         {
             hasEndedGame = true; // Marque comme envoyé pour éviter les doublons
             SendScoresToAPI(onComplete);
+#if !WEB_BUILD
             StartCoroutine(SendScoresToArcade());
+#endif
         }
         else
         {
