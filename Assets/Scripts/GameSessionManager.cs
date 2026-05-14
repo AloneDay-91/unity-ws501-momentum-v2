@@ -306,6 +306,9 @@ public class GameSessionManager : MonoBehaviour
     // Événement déclenché quand la partie est relancée
     public static event System.Action OnGameRestarted;
 
+    // WEB_BUILD: déclenché quand le serveur passe status="finished"
+    public static event System.Action OnGameFinished;
+
     /// <summary>
     /// Démarre la partie en appelant /api/game/start
     /// À appeler quand les deux joueurs sont prêts et qu'on veut lancer le jeu
@@ -571,56 +574,76 @@ public class GameSessionManager : MonoBehaviour
     /// a scene-load callback) once players are known to be in the scene.
     /// In arcade mode this method is compiled away.
     /// </summary>
+    private GameObject _localP1Go;
+    private GameObject _localP2Go;
+    private bool _localPlayerInitialized = false;
+    private int _localPlayerNumber = 0;
+
+    public int LocalPlayerNumber => _localPlayerNumber;
+
     public void InitWebMode()
     {
-        // Find local players by tag (tagged "Player") or by PlayerInput component
-        PlayerInput[] allInputs = FindObjectsOfType<PlayerInput>();
-        GameObject p1Go = null;
-        GameObject p2Go = null;
+        Debug.Log($"[DIAG][GameSessionManager] InitWebMode called at T={Time.realtimeSinceStartup:F3}s in scene='{UnityEngine.SceneManagement.SceneManager.GetActiveScene().name}'. NetworkManager.Instance={(NetworkManager.Instance != null ? "OK" : "NULL")}, Room={(NetworkManager.Instance?.Room != null ? "OK" : "NULL")}, Room.State={(NetworkManager.Instance?.Room?.State != null ? "OK" : "NULL")}, players count={(NetworkManager.Instance?.Room?.State?.players != null ? NetworkManager.Instance.Room.State.players.Count.ToString() : "null")}, MySId='{NetworkManager.Instance?.MySessionId ?? "null"}'");
 
+        // Find both player GameObjects in the scene — keep references but DO NOT disable
+        // either yet. Server-assigned playerNumber decides which slot is "us" (red P1 or blue P2),
+        // and we only learn it once our PlayerState arrives via HandlePlayerStateAdded.
+        PlayerInput[] allInputs = FindObjectsOfType<PlayerInput>(includeInactive: true);
+        _localP1Go = null;
+        _localP2Go = null;
         foreach (var pi in allInputs)
         {
-            if (pi.playerID == 1) p1Go = pi.gameObject;
-            else if (pi.playerID == 2) p2Go = pi.gameObject;
+            if (pi.playerID == 1) _localP1Go = pi.gameObject;
+            else if (pi.playerID == 2) _localP2Go = pi.gameObject;
+        }
+        if (showDebug) Debug.Log($"[GameSessionManager] WEB_BUILD: Found P1={(_localP1Go != null ? _localP1Go.name : "null")}, P2={(_localP2Go != null ? _localP2Go.name : "null")} — waiting for server playerNumber before assigning slots");
+
+        // Reset the "initialized" flag on each scene entry so SetupLocalPlayer re-runs
+        // after a scene reload (LocalPlayerSync, camera viewport, P2-disable must re-apply).
+        _localPlayerInitialized = false;
+
+        // If we already know our playerNumber from a previous InitWebMode call, apply it immediately.
+        // Useful when Room state was populated before the main scene loaded.
+        if (_localPlayerNumber > 0)
+        {
+            SetupLocalPlayer(_localPlayerNumber);
         }
 
-        // Disable P2 — only one local player in web mode
-        if (p2Go != null)
-        {
-            p2Go.SetActive(false);
-            if (showDebug) Debug.Log("[GameSessionManager] WEB_BUILD: P2 disabled");
-        }
-        else
-        {
-            if (showDebug) Debug.Log("[GameSessionManager] WEB_BUILD: No P2 found in scene — nothing to disable");
-        }
-
-        // Add LocalPlayerSync to P1
-        if (p1Go != null)
-        {
-            if (p1Go.GetComponent<LocalPlayerSync>() == null)
-                p1Go.AddComponent<LocalPlayerSync>();
-            if (showDebug) Debug.Log("[GameSessionManager] WEB_BUILD: LocalPlayerSync attached to P1");
-        }
-        else
-        {
-            Debug.LogError("[GameSessionManager] WEB_BUILD: Could not find P1 (playerID == 1) in scene");
-        }
-
-        // Subscribe to remote player events
+        // Subscribe to remote player events. Idempotent: dedupe by -= then +=,
+        // so repeated InitWebMode calls (scene reload, OnSceneLoaded) don't pile up handlers.
         if (NetworkManager.Instance != null)
         {
+            NetworkManager.Instance.OnPlayerAdded -= HandlePlayerStateAdded;
+            NetworkManager.Instance.OnPlayerAdded += HandlePlayerStateAdded;
+            NetworkManager.Instance.OnPlayerAdded -= HandleRemotePlayerAdded;
             NetworkManager.Instance.OnPlayerAdded += HandleRemotePlayerAdded;
+            NetworkManager.Instance.OnPlayerRemoved -= HandleRemotePlayerRemoved;
             NetworkManager.Instance.OnPlayerRemoved += HandleRemotePlayerRemoved;
+
+            // Server-driven scene transition: when state.status flips to "playing",
+            // every client fires OnGameStarted → LobbyPageUI loads "main". Both clients
+            // transition on the same server tick, no manual sync required.
+            NetworkManager.Instance.OnConnected -= SetupGameStateListener;
+            NetworkManager.Instance.OnConnected += SetupGameStateListener;
+            if (NetworkManager.Instance.Room != null) SetupGameStateListener();
+
             if (showDebug) Debug.Log("[GameSessionManager] WEB_BUILD: Subscribed to NetworkManager events");
 
             // Catch up: if Room already has players, replay them now (subscribing late shouldn't lose existing players)
             if (NetworkManager.Instance.Room != null && NetworkManager.Instance.Room.State != null && NetworkManager.Instance.Room.State.players != null)
             {
+                int catchupCount = NetworkManager.Instance.Room.State.players.Count;
+                Debug.Log($"[DIAG][GameSessionManager] Catch-up replay starting: {catchupCount} player(s) already in Room.State.players");
                 NetworkManager.Instance.Room.State.players.ForEach((sId, ps) =>
                 {
+                    Debug.Log($"[DIAG][GameSessionManager] Catch-up: replaying sId='{sId}'");
+                    HandlePlayerStateAdded(sId, ps);
                     HandleRemotePlayerAdded(sId, ps);
                 });
+            }
+            else
+            {
+                Debug.Log($"[DIAG][GameSessionManager] Catch-up skipped — Room or State not ready yet. Will rely on OnPlayerAdded callback for future joins.");
             }
         }
         else
@@ -629,36 +652,210 @@ public class GameSessionManager : MonoBehaviour
         }
     }
 
+    private string _previousServerStatus = "";
+    private Colyseus.Room<GameState>.StateChangeEventHandler _stateChangeHandler;
+    private Colyseus.Room<GameState> _stateChangeRoom;
+
+    /// <summary>
+    /// Subscribes to top-level Room.OnStateChange and fires OnGameStarted when state.status
+    /// flips to "playing". Server triggers this transition automatically once both players
+    /// join + 3s countdown ends, so both clients receive the change on the same server tick
+    /// → scene loads in sync.
+    /// Idempotent: removes previous handler before re-subscribing.
+    /// </summary>
+    private void SetupGameStateListener()
+    {
+        var nm = NetworkManager.Instance;
+        if (nm?.Room?.State == null)
+        {
+            if (showDebug) Debug.Log("[GameSessionManager] WEB_BUILD: SetupGameStateListener skipped — Room/State not ready");
+            return;
+        }
+
+        // Detach from previous Room if any (defensive — Connect could in theory re-create the Room)
+        if (_stateChangeRoom != null && _stateChangeHandler != null)
+        {
+            _stateChangeRoom.OnStateChange -= _stateChangeHandler;
+        }
+
+        _stateChangeRoom = nm.Room;
+        _previousServerStatus = nm.Room.State.status ?? "";
+
+        _stateChangeHandler = (state, isFirstState) =>
+        {
+            var currentStatus = state.status ?? "";
+            if (currentStatus == _previousServerStatus) return;
+
+            if (showDebug) Debug.Log($"[GameSessionManager] WEB_BUILD: state.status '{_previousServerStatus}' → '{currentStatus}' (countdown={state.countdownRemaining}, isFirstState={isFirstState})");
+            _previousServerStatus = currentStatus;
+
+            // "loading": server says both players joined → every client must LoadScene("main").
+            // Once each client's scene is up it sends "sceneReady" and the server proceeds to
+            // status="countdown" (visible in-game) and then "playing". This handshake keeps the
+            // in-game countdown perfectly aligned across clients even when WebGL load times diverge.
+            if (currentStatus == "loading")
+            {
+                if (showDebug) Debug.Log("[GameSessionManager] WEB_BUILD: status=loading → firing OnGameStarted (LobbyPageUI will LoadScene main)");
+                OnGameStarted?.Invoke();
+            }
+            else if (currentStatus == "finished")
+            {
+                if (showDebug) Debug.Log("[GameSessionManager] WEB_BUILD: status=finished → firing OnGameFinished");
+                OnGameFinished?.Invoke();
+            }
+        };
+
+        _stateChangeRoom.OnStateChange += _stateChangeHandler;
+
+        if (showDebug) Debug.Log($"[GameSessionManager] WEB_BUILD: Room.OnStateChange listener installed, current status='{_previousServerStatus}'");
+    }
+
+    /// <summary>
+    /// Populates player1Pseudo / player2Pseudo / ready flags from the PlayerState sent by the server.
+    /// Fires for ALL players (self and remote) so the lobby UI knows both names.
+    /// </summary>
+    private void HandlePlayerStateAdded(string addedSessionId, PlayerState state)
+    {
+        if (state == null) return;
+        bool changed = false;
+
+        if (state.playerNumber == 1)
+        {
+            if (player1Pseudo != state.pseudo)
+            {
+                player1Pseudo = state.pseudo;
+                changed = true;
+            }
+            if (!player1Ready) { player1Ready = true; changed = true; }
+            if (changed) OnPlayer1Joined?.Invoke(player1Pseudo);
+        }
+        else if (state.playerNumber == 2)
+        {
+            if (player2Pseudo != state.pseudo)
+            {
+                player2Pseudo = state.pseudo;
+                changed = true;
+            }
+            if (!player2Ready) { player2Ready = true; changed = true; }
+            if (changed) OnPlayer2Joined?.Invoke(player2Pseudo);
+        }
+
+        if (player1Ready && player2Ready && !bothPlayersReady)
+        {
+            bothPlayersReady = true;
+            OnBothPlayersReady?.Invoke();
+            if (showDebug) Debug.Log("[GameSessionManager] WEB_BUILD: Both players ready");
+        }
+
+        if (showDebug && changed)
+        {
+            Debug.Log($"[GameSessionManager] WEB_BUILD: PlayerState P{state.playerNumber} pseudo='{state.pseudo}' sId='{addedSessionId}'");
+        }
+
+        // Set up the local player when our own PlayerState arrives. We learn our slot
+        // (P1 = red, P2 = blue) only from the server — the local PlayerInput.playerID
+        // is just the scene-prepped slot, not a network identity.
+        // Note: state.playerNumber is float (Colyseus schema "number" → C# float), cast to int.
+        int statePlayerNumber = (int)state.playerNumber;
+        if (NetworkManager.Instance != null
+            && addedSessionId == NetworkManager.Instance.MySessionId
+            && statePlayerNumber > 0)
+        {
+            _localPlayerNumber = statePlayerNumber;
+            if (!_localPlayerInitialized) SetupLocalPlayer(statePlayerNumber);
+        }
+    }
+
+    /// <summary>
+    /// Apply the server-assigned player slot to the current scene: enable our GameObject
+    /// (P1 or P2), disable the other one, attach LocalPlayerSync to ours, and switch
+    /// the camera viewport to fullscreen for WebGL (no split-screen in single-local-player mode).
+    /// </summary>
+    private void SetupLocalPlayer(int playerNumber)
+    {
+        if (_localP1Go == null && _localP2Go == null)
+        {
+            if (showDebug) Debug.Log("[GameSessionManager] WEB_BUILD: SetupLocalPlayer skipped — no player GameObjects in this scene (probably MainMenu)");
+            return;
+        }
+
+        GameObject mine = playerNumber == 1 ? _localP1Go : _localP2Go;
+        GameObject other = playerNumber == 1 ? _localP2Go : _localP1Go;
+
+        if (other != null)
+        {
+            other.SetActive(false);
+            if (showDebug) Debug.Log($"[GameSessionManager] WEB_BUILD: Disabled P{(playerNumber == 1 ? 2 : 1)} (remote slot — will be cloned for the other player)");
+        }
+
+        if (mine == null)
+        {
+            Debug.LogError($"[GameSessionManager] WEB_BUILD: SetupLocalPlayer — could not find P{playerNumber} GameObject in scene");
+            return;
+        }
+
+        // Ensure the local slot is active (in case a prior pass disabled it)
+        if (!mine.activeSelf) mine.SetActive(true);
+
+        if (mine.GetComponent<LocalPlayerSync>() == null)
+            mine.AddComponent<LocalPlayerSync>();
+
+        // Fullscreen camera: arcade mode uses split (P1 top, P2 bottom). In WebGL there's only
+        // one local player, so the visible camera takes the whole viewport.
+        foreach (var cam in mine.GetComponentsInChildren<Camera>(includeInactive: true))
+        {
+            cam.rect = new Rect(0f, 0f, 1f, 1f);
+        }
+
+        _localPlayerInitialized = true;
+        if (showDebug) Debug.Log($"[GameSessionManager] WEB_BUILD: SetupLocalPlayer done — local is P{playerNumber}, LocalPlayerSync attached, camera fullscreen");
+    }
+
     private void HandleRemotePlayerAdded(string remoteSessionId, PlayerState state)
     {
+        Debug.Log($"[DIAG][GameSessionManager] HandleRemotePlayerAdded called at T={Time.realtimeSinceStartup:F3}s for sId='{remoteSessionId}', MySId='{NetworkManager.Instance?.MySessionId ?? "null"}', scene='{UnityEngine.SceneManagement.SceneManager.GetActiveScene().name}'");
+
         // Skip if this is our own session
         if (NetworkManager.Instance != null && remoteSessionId == NetworkManager.Instance.MySessionId)
+        {
+            Debug.Log($"[DIAG][GameSessionManager] -> Skipping (is own session)");
             return;
+        }
 
         if (remoteNetworkPlayers.ContainsKey(remoteSessionId))
         {
+            Debug.Log($"[DIAG][GameSessionManager] -> Skipping (already tracked)");
             if (showDebug) Debug.LogWarning($"[GameSessionManager] WEB_BUILD: Remote player {remoteSessionId} already tracked — skipping");
             return;
         }
 
-        // Spawn a copy of P1 to use as the remote-player puppet
-        PlayerInput[] allInputs = FindObjectsOfType<PlayerInput>();
-        GameObject p1Go = null;
-        foreach (var pi in allInputs)
+        // Choose the clone source matching the remote player's server-assigned slot:
+        // remote is P1 → clone P1 GameObject (red), remote is P2 → clone P2 (blue).
+        // The matching scene slot is disabled (by SetupLocalPlayer) once we know our own
+        // playerNumber, but Instantiate works on inactive source GameObjects too.
+        GameObject sourceGo = null;
+        if (state.playerNumber == 1) sourceGo = _localP1Go;
+        else if (state.playerNumber == 2) sourceGo = _localP2Go;
+
+        if (sourceGo == null)
         {
-            if (pi.playerID == 1) { p1Go = pi.gameObject; break; }
+            // Fallback: scan the scene (handles edge case where InitWebMode wasn't called yet)
+            PlayerInput[] allInputs = FindObjectsOfType<PlayerInput>(includeInactive: true);
+            foreach (var pi in allInputs)
+            {
+                if (pi.playerID == state.playerNumber) { sourceGo = pi.gameObject; break; }
+            }
         }
 
-        if (p1Go == null)
+        if (sourceGo == null)
         {
-            Debug.LogError("[GameSessionManager] WEB_BUILD: Cannot find P1 to clone for remote player");
+            Debug.LogError($"[GameSessionManager] WEB_BUILD: Cannot find P{state.playerNumber} source GameObject to clone for remote player");
             return;
         }
 
-        // Determine spawn position: playerNumber == 2 → use P1 position offset; else same spot
-        Vector3 spawnPos = p1Go.transform.position;
-        var go = Instantiate(p1Go, spawnPos, p1Go.transform.rotation);
-        go.name = $"RemotePlayer_{remoteSessionId}";
+        Vector3 spawnPos = sourceGo.transform.position;
+        var go = Instantiate(sourceGo, spawnPos, sourceGo.transform.rotation);
+        go.name = $"RemotePlayer_P{state.playerNumber}_{remoteSessionId}";
 
         // Suppress any Update() ticks until Bind() has neutralized the clone's components
         go.SetActive(false);

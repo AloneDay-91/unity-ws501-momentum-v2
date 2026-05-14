@@ -71,5 +71,17 @@ public PlayerState() { }
 
 	[Type(18, "boolean")]
 	public bool isAlive = default(bool);
+
+	[Type(19, "boolean")]
+	public bool isManuallySliding = default(bool);
+
+	[Type(20, "boolean")]
+	public bool isLandingHard = default(bool);
+
+	[Type(21, "number")]
+	public float actionSeq = default(float);
+
+	[Type(22, "number")]
+	public float actionId = default(float);
 }
 

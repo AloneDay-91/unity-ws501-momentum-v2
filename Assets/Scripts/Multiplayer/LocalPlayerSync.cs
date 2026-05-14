@@ -5,21 +5,38 @@ using UnityEngine;
 [RequireComponent(typeof(PlayerInput))]
 public class LocalPlayerSync : MonoBehaviour
 {
-    [Tooltip("Send rate in Hz; should match server TICK_RATE_HZ (20).")]
-    public float sendRateHz = 20f;
+    [Tooltip("Send rate in Hz; should match server TICK_RATE_HZ (60). Higher = smoother remote view but more bandwidth.")]
+    public float sendRateHz = 60f;
 
     private Rigidbody rb;
     private PlayerInput input;
     private PlayerMovement movement;
+    private ParkourController parkour;
     private float sendInterval;
     private float timeSinceLastSend;
+
+    // One-shot animation trigger queue. Filled by PlayerAnimator/ParkourController when the
+    // local player jumps/slides/vaults; flushed into the next outgoing input message.
+    private int _actionSeq;
+    private int _pendingActionId;
+
+    public const int ACTION_JUMP = 1;
+    public const int ACTION_MANUAL_SLIDE = 2;
+    public const int ACTION_VAULT = 3;
 
     void Start()
     {
         rb = GetComponent<Rigidbody>();
         input = GetComponent<PlayerInput>();
         movement = GetComponent<PlayerMovement>();
+        parkour = GetComponent<ParkourController>();
         sendInterval = 1f / Mathf.Max(1f, sendRateHz);
+    }
+
+    public void QueueAction(int actionId)
+    {
+        _pendingActionId = actionId;
+        _actionSeq++;
     }
 
     void Update()
@@ -40,8 +57,12 @@ public class LocalPlayerSync : MonoBehaviour
             velZ = rb.velocity.z,
             rotY = transform.rotation.eulerAngles.y,
             isGrounded = movement != null && movement.IsPhysicallyGrounded,
-            isSliding = false, // TODO: wire up when ParkourController is integrated (M2.7+)
+            isSliding = movement != null && movement.IsInSlopeZone,
             horizontalInput = input.HorizontalInput,
+            isManuallySliding = parkour != null && parkour.isManuallySliding,
+            isLandingHard = movement != null && movement.isLandingHard,
+            actionSeq = _actionSeq,
+            actionId = _pendingActionId,
         };
         NetworkManager.Instance.SendInput(payload);
     }

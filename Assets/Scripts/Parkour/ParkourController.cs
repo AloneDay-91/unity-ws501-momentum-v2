@@ -98,8 +98,12 @@ public class ParkourController : MonoBehaviour
         {
             animator.SetTrigger("doManualSlide");
         }
-        
-        playerCollider.direction = 1; 
+#if WEB_BUILD
+        var slideSync = GetComponent<LocalPlayerSync>();
+        if (slideSync != null) slideSync.QueueAction(LocalPlayerSync.ACTION_MANUAL_SLIDE);
+#endif
+
+        playerCollider.direction = 1;
         playerCollider.height = slideHeight;
         playerCollider.center = new Vector3(0, slideColliderCenterY, 0); 
         
@@ -154,6 +158,10 @@ public class ParkourController : MonoBehaviour
         {
             animator.SetTrigger("doVault");
         }
+#if WEB_BUILD
+        var vaultSync = GetComponent<LocalPlayerSync>();
+        if (vaultSync != null) vaultSync.QueueAction(LocalPlayerSync.ACTION_VAULT);
+#endif
 
         // SAUT PARFAIT - Ajoute 100 points au score
         if (ScoreManager.Instance != null && playerInput != null)

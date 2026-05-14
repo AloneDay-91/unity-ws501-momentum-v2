@@ -10,7 +10,7 @@ public class LaserWall : MonoBehaviour
 {
     [Header("Timing")]
     [Tooltip("Délai avant que le mur ne commence à avancer (en secondes)")]
-    public float startDelay = 10f;
+    public float startDelay = 20f;
 
     [Tooltip("Démarrer automatiquement au lancement de la scène")]
     public bool autoStart = true;
@@ -78,7 +78,10 @@ public class LaserWall : MonoBehaviour
     void Start()
     {
         wallCollider = GetComponent<Collider>();
-        wallCollider.isTrigger = true;
+        if (wallCollider != null)
+        {
+            wallCollider.isTrigger = true;
+        }
 
         wallRenderer = GetComponent<Renderer>();
         if (wallRenderer != null)
@@ -88,11 +91,14 @@ public class LaserWall : MonoBehaviour
 
         currentSpeed = moveSpeed;
 
-        // Active les particules si présentes
+        // Désactive les particules au début (elles s'activeront au démarrage)
         if (wallParticles != null)
         {
-            wallParticles.Play();
+            wallParticles.Stop();
         }
+
+        // Rend le mur invisible au début
+        SetWallVisibility(false);
 
         if (autoStart)
         {
@@ -115,9 +121,26 @@ public class LaserWall : MonoBehaviour
             Debug.Log($"Mur de laser: Démarrage dans {startDelay} secondes...");
         }
 
+        // Hold until the match is actually running. The Update() check below pauses
+        // movement once isMoving is true, but visibility/sound trigger from this coroutine,
+        // so we also gate the whole startup behind gameInProgress.
+        while (GameManager.Instance != null && !GameManager.Instance.gameInProgress)
+        {
+            yield return null;
+        }
+
         yield return new WaitForSeconds(startDelay);
 
         isMoving = true;
+
+        // Rend le mur visible
+        SetWallVisibility(true);
+
+        // Active les particules
+        if (wallParticles != null)
+        {
+            wallParticles.Play();
+        }
 
         if (showDebug)
         {
@@ -134,6 +157,11 @@ public class LaserWall : MonoBehaviour
     void Update()
     {
         if (!isMoving) return;
+
+        // Don't advance until the server-driven countdown has actually started the match.
+        // Without this, in WEB_BUILD the wall starts moving while we're still on the
+        // "En attente de l'autre joueur" / "3,2,1" overlay → unfair.
+        if (GameManager.Instance != null && !GameManager.Instance.gameInProgress) return;
 
         // Déplace le mur
         transform.position += moveDirection.normalized * currentSpeed * Time.deltaTime;
@@ -258,6 +286,15 @@ public class LaserWall : MonoBehaviour
         currentSpeed = moveSpeed;
         isMoving = false;
 
+        // Rend le mur invisible à nouveau
+        SetWallVisibility(false);
+
+        // Arrête les particules
+        if (wallParticles != null)
+        {
+            wallParticles.Stop();
+        }
+
         if (showDebug)
         {
             Debug.Log("Mur de laser: Réinitialisé.");
@@ -273,6 +310,35 @@ public class LaserWall : MonoBehaviour
         if (showDebug)
         {
             Debug.Log($"Mur de laser: Vitesse changée à {newSpeed}");
+        }
+    }
+
+    /// <summary>
+    /// Active ou désactive la visibilité du mur
+    /// </summary>
+    private void SetWallVisibility(bool visible)
+    {
+        if (wallRenderer != null)
+        {
+            wallRenderer.enabled = visible;
+        }
+
+        // Active/désactive aussi les renderers des enfants (si le mur a des composants visuels)
+        Renderer[] childRenderers = GetComponentsInChildren<Renderer>();
+        foreach (Renderer renderer in childRenderers)
+        {
+            renderer.enabled = visible;
+        }
+
+        // Active/désactive le collider pour éviter les collisions avec un mur invisible
+        if (wallCollider != null)
+        {
+            wallCollider.enabled = visible;
+        }
+
+        if (showDebug)
+        {
+            Debug.Log($"Mur de laser: Visibilité = {visible}");
         }
     }
 

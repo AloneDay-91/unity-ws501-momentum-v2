@@ -46,6 +46,7 @@ public class NetworkManager : MonoBehaviour
 
     async void Start()
     {
+        Debug.Log($"[DIAG][NetworkManager] Start fired at T={Time.realtimeSinceStartup:F3}s, WebBootstrap.IsReady={WebBootstrap.IsReady}, sessionId='{WebBootstrap.SessionId}', hasToken={!string.IsNullOrEmpty(WebBootstrap.Token)}");
         if (!WebBootstrap.IsReady)
         {
             OnConnectionFailed?.Invoke("Missing sessionId or token in URL");
@@ -80,17 +81,28 @@ public class NetworkManager : MonoBehaviour
                 { "sessionId", sessionId },
                 { "token", token },
             };
+            Debug.Log($"[DIAG][NetworkManager] Calling JoinOrCreate at T={Time.realtimeSinceStartup:F3}s, url={serverUrl}, sessionId='{sessionId}'");
             Room = await Client.JoinOrCreate<GameState>("momentum", options);
             Debug.Log($"[NetworkManager] Joined room {Room.RoomId} as {Room.SessionId}");
+            Debug.Log($"[DIAG][NetworkManager] JoinOrCreate returned at T={Time.realtimeSinceStartup:F3}s. State.players count={(Room.State?.players != null ? Room.State.players.Count.ToString() : "null")}");
 
             Callbacks = Colyseus.Schema.Callbacks.Get(Room);
             _removeOnAdd = Callbacks.OnAdd<PlayerState>(
                 s => s.players,
-                (sId, player) => OnPlayerAdded?.Invoke(sId, player));
+                (sId, player) =>
+                {
+                    Debug.Log($"[DIAG][NetworkManager] OnAdd fired at T={Time.realtimeSinceStartup:F3}s for sId='{sId}' (mySId='{MySessionId}', isSelf={sId == MySessionId})");
+                    OnPlayerAdded?.Invoke(sId, player);
+                });
             _removeOnRemove = Callbacks.OnRemove<PlayerState>(
                 s => s.players,
-                (sId, _) => OnPlayerRemoved?.Invoke(sId));
+                (sId, _) =>
+                {
+                    Debug.Log($"[DIAG][NetworkManager] OnRemove fired at T={Time.realtimeSinceStartup:F3}s for sId='{sId}'");
+                    OnPlayerRemoved?.Invoke(sId);
+                });
 
+            Debug.Log($"[DIAG][NetworkManager] OnAdd/OnRemove registered at T={Time.realtimeSinceStartup:F3}s. State.players count NOW={(Room.State?.players != null ? Room.State.players.Count.ToString() : "null")}");
             OnConnected?.Invoke();
         }
         catch (Exception ex)
@@ -115,6 +127,8 @@ public class NetworkManager : MonoBehaviour
     public void SendInput(PlayerInputPayload payload) => Room?.Send("input", payload);
     public void SendStun() => Room?.Send("stun");
     public void SendFinish(float score) => Room?.Send("finish", new FinishPayload { score = score });
+    public void SendSceneReady() => Room?.Send("sceneReady");
+    public void SendDeath() => Room?.Send("death");
 
     void OnDestroy()
     {
@@ -132,6 +146,10 @@ public class PlayerInputPayload
     public bool isGrounded;
     public bool isSliding;
     public float horizontalInput;
+    public bool isManuallySliding;
+    public bool isLandingHard;
+    public int actionSeq;
+    public int actionId;
 }
 
 [Serializable]

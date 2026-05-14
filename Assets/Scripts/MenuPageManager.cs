@@ -48,18 +48,6 @@ public class MenuPageManager : MonoBehaviour
 
     void Start()
     {
-#if WEB_BUILD
-        // En multijoueur web, on saute tout le menu (QR codes, lobby de borne...)
-        // et on charge directement la scène de jeu.
-        if (WebBootstrap.IsReady)
-        {
-            if (showDebug) Debug.Log("[MenuPageManager] WEB_BUILD detected with valid session — skipping menu, loading 'main' scene");
-            SceneManager.LoadScene("main");
-            return;
-        }
-        Debug.LogWarning("[MenuPageManager] WEB_BUILD but no sessionId/token in URL — falling back to menu");
-#endif
-
         // Enregistre toutes les pages
         if (homePage != null) pages["home"] = homePage;
         if (qrCodePage != null) pages["qrcode"] = qrCodePage;
@@ -75,7 +63,9 @@ public class MenuPageManager : MonoBehaviour
             }
         }
 
-        // Affiche la page de départ
+        // Affiche la page de départ (en WEB_BUILD comme en arcade : home page).
+        // En WEB_BUILD, le bouton Play / ShowQRCodePage sera redirigé vers la LobbyPage
+        // pour skipper la génération de QR code (inutile : la session vient déjà de l'URL).
         if (startingPage != null)
         {
             ShowPage(startingPage);
@@ -137,10 +127,19 @@ public class MenuPageManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Affiche la page des QR codes
+    /// Affiche la page des QR codes (en WEB_BUILD on skip cette étape arcade et on
+    /// va directement à la LobbyPage — la session vient déjà de l'URL, pas besoin de QR).
     /// </summary>
     public void ShowQRCodePage()
     {
+#if WEB_BUILD
+        if (WebBootstrap.IsReady && lobbyPage != null)
+        {
+            if (showDebug) Debug.Log("[MenuPageManager] WEB_BUILD: ShowQRCodePage → redirect to LobbyPage");
+            ShowPage(lobbyPage);
+            return;
+        }
+#endif
         ShowPage(qrCodePage);
     }
 

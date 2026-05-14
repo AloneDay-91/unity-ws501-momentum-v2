@@ -32,14 +32,20 @@ public class PlayerInput : MonoBehaviour
 
     void Start()
     {
+        // Input axes: there's only ONE local player on the web client, so it always uses the
+        // P1_* input axes regardless of whether the server assigned it as P1 or P2. Game-side
+        // identity (death attribution, score tracking, UI matching) keeps `playerID` intact —
+        // before, we hard-coded playerID=1 here too, which made Player_J2 misreport itself as P1
+        // and broke per-player elimination on the P2 client.
+        int axisID = playerID;
 #if WEB_BUILD
-        playerID = 1;
+        axisID = 1;
 #endif
-        horizontalAxisName = "P" + playerID + "_Horizontal";
-        verticalAxisName = "P" + playerID + "_Vertical";
-        jumpButtonName = "P" + playerID + "_B1"; 
-        slideButtonName = "P" + playerID + "_B2"; 
-        lightButtonName = "P" + playerID + "_B3"; // <-- NOUVEAU
+        horizontalAxisName = "P" + axisID + "_Horizontal";
+        verticalAxisName = "P" + axisID + "_Vertical";
+        jumpButtonName = "P" + axisID + "_B1";
+        slideButtonName = "P" + axisID + "_B2";
+        lightButtonName = "P" + axisID + "_B3";
     }
     
     // Fonction publique pour "consommer" le saut

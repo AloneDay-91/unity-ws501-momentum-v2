@@ -58,6 +58,7 @@ public class PlayerScoreUI : MonoBehaviour
     private Vector3 originalScoreScale;
     private Vector3 originalScorePosition;
     private bool isAnimating = false;
+    private bool isEliminated = false;
 
     void Start()
     {
@@ -148,7 +149,24 @@ public class PlayerScoreUI : MonoBehaviour
     {
         if (scoreText != null)
         {
-            scoreText.text = score.ToString();
+            scoreText.text = isEliminated ? "✖" : score.ToString();
+        }
+    }
+
+    /// <summary>
+    /// Appelée quand le joueur surveillé est éliminé : le score est remplacé par une croix.
+    /// Hook public utilisable depuis GameManager.OnPlayerEliminated.
+    /// </summary>
+    public void MarkEliminated()
+    {
+        if (isEliminated) return;
+        isEliminated = true;
+        if (scoreText != null)
+        {
+            scoreText.color = originalScoreColor;
+            scoreText.transform.localScale = originalScoreScale;
+            scoreText.transform.localPosition = originalScorePosition;
+            scoreText.text = "✖";
         }
     }
 

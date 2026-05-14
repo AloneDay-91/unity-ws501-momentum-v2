@@ -39,6 +39,11 @@ public class PlayerAnimator : MonoBehaviour
         {
             animator.SetTrigger("doJump");
         }
+#if WEB_BUILD
+        // Mirror the trigger over the network so the remote clone plays the jump anim too.
+        var sync = GetComponent<LocalPlayerSync>();
+        if (sync != null) sync.QueueAction(LocalPlayerSync.ACTION_JUMP);
+#endif
     }
 
     void Update()

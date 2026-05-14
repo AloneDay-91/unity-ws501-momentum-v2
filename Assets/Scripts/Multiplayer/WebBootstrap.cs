@@ -56,7 +56,9 @@ public class WebBootstrap : MonoBehaviour
     {
 #if WEB_BUILD
         if (!IsReady) return;
+        var sceneName = SceneManager.GetActiveScene().name;
         var gsm = GameSessionManager.Instance ?? FindObjectOfType<GameSessionManager>();
+        Debug.Log($"[DIAG][WebBootstrap] TryInitWebModeForCurrentScene at T={Time.realtimeSinceStartup:F3}s, scene='{sceneName}', gsm={(gsm != null ? "OK" : "NULL")}");
         if (gsm != null)
         {
             gsm.InitWebMode();

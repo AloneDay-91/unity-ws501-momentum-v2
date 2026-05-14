@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -44,15 +45,27 @@ public class LobbyPageUI : MonoBehaviour
         // S'abonne à l'événement de démarrage de partie
         GameSessionManager.OnGameStarted += OnGameStarted;
 
+        // S'abonne aux events de pseudo/ready pour rafraîchir l'UI quand
+        // les noms arrivent (depuis le polling API en arcade, depuis OnPlayerAdded en WEB_BUILD)
+        GameSessionManager.OnPlayer1Joined += OnPlayerInfoChanged;
+        GameSessionManager.OnPlayer2Joined += OnPlayerInfoChanged;
+        GameSessionManager.OnBothPlayersReady += OnBothPlayersReady;
+
         // Rafraîchit l'affichage quand la page s'active
         UpdateDisplay();
     }
 
     void OnDisable()
     {
-        // Se désabonne de l'événement
+        // Se désabonne des events
         GameSessionManager.OnGameStarted -= OnGameStarted;
+        GameSessionManager.OnPlayer1Joined -= OnPlayerInfoChanged;
+        GameSessionManager.OnPlayer2Joined -= OnPlayerInfoChanged;
+        GameSessionManager.OnBothPlayersReady -= OnBothPlayersReady;
     }
+
+    private void OnPlayerInfoChanged(string _) => UpdateDisplay();
+    private void OnBothPlayersReady() => UpdateDisplay();
 
     void Start()
     {
@@ -149,31 +162,48 @@ public class LobbyPageUI : MonoBehaviour
             return;
         }
 
-        if (showDebug)
-        {
-            Debug.Log("LobbyPageUI: Démarrage de la partie via l'API...");
-        }
-
         // Désactive le bouton pendant le chargement
-        if (startGameButton != null)
-        {
-            startGameButton.interactable = false;
-        }
+        if (startGameButton != null) startGameButton.interactable = false;
+        if (startButtonText != null) startButtonText.text = "Démarrage...";
 
-        if (startButtonText != null)
-        {
-            startButtonText.text = "Démarrage...";
-        }
-
-        // Appelle l'API pour démarrer la partie
+#if WEB_BUILD
+        // En WEB_BUILD le serveur pilote la transition (state.status → "playing"
+        // fait fire OnGameStarted → LoadScene). Mais on lance aussi un fallback
+        // manuel après 1.5s au cas où le state listener n'aurait pas fired
+        // (ex: désync, listener jamais installé, etc.) — au pire ça LoadScene
+        // un peu avant l'autre client, c'est mieux que rester bloqué.
+        if (showDebug) Debug.Log("LobbyPageUI: WEB_BUILD - attente serveur (state.status → playing), fallback manuel dans 1.5s");
+        StartCoroutine(WebBuildStartFallback());
+#else
+        if (showDebug) Debug.Log("LobbyPageUI: Démarrage de la partie via l'API...");
+        // Appelle l'API pour démarrer la partie (arcade flow)
         GameSessionManager.Instance.StartGame(gameSceneName);
+#endif
     }
 
+#if WEB_BUILD
+    private bool _webBuildSceneLoadTriggered = false;
+
+    private IEnumerator WebBuildStartFallback()
+    {
+        yield return new WaitForSeconds(1.5f);
+        if (_webBuildSceneLoadTriggered) yield break;
+        _webBuildSceneLoadTriggered = true;
+        if (showDebug) Debug.Log("LobbyPageUI: WEB_BUILD fallback timer expired — manual LoadScene");
+        UnityEngine.SceneManagement.SceneManager.LoadScene(gameSceneName);
+    }
+#endif
+
     /// <summary>
-    /// Appelé quand l'API confirme que la partie a démarré
+    /// Appelé quand l'API confirme que la partie a démarré (arcade) ou que
+    /// le serveur Colyseus a flippé state.status sur "playing" (WEB_BUILD).
     /// </summary>
     private void OnGameStarted()
     {
+#if WEB_BUILD
+        if (_webBuildSceneLoadTriggered) return;
+        _webBuildSceneLoadTriggered = true;
+#endif
         if (showDebug)
         {
             Debug.Log("LobbyPageUI: Partie démarrée! Chargement de la scène...");
@@ -194,10 +224,15 @@ public class LobbyPageUI : MonoBehaviour
             GameSessionManager.Instance.ResetSession();
         }
 
-        // Retourne à la page d'accueil
-        if (MenuPageManager.Instance != null)
-        {
-            MenuPageManager.Instance.ShowQRCodePage();
-        }
+        if (MenuPageManager.Instance == null) return;
+
+#if WEB_BUILD
+        // En WEB_BUILD, ShowQRCodePage est redirigé vers la LobbyPage (= boucle).
+        // On va explicitement à la home page pour un vrai retour visuel.
+        MenuPageManager.Instance.ShowHomePage();
+#else
+        // En arcade, la lobby vient juste après la QR code page — c'est le bon "back".
+        MenuPageManager.Instance.ShowQRCodePage();
+#endif
     }
 }

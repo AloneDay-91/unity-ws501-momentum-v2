@@ -359,12 +359,29 @@ public class ScoreManager : MonoBehaviour
             return;
         }
 
+        // In WEB_BUILD multiplayer each client only has accurate data for ITS OWN player —
+        // the opponent's score is whatever the local ScoreManager happened to update from
+        // network events, which is incomplete. Both clients POST in parallel; each contributes
+        // its own row to /api/game/end so the final DB has one accurate record per player.
+#if WEB_BUILD
+        int localPlayerNumber = GameSessionManager.Instance.LocalPlayerNumber;
+        if (localPlayerNumber <= 0)
+        {
+            if (showDebug) Debug.LogWarning("ScoreManager: LocalPlayerNumber unknown, cannot send scores");
+            onComplete?.Invoke(false);
+            return;
+        }
+#endif
+
         // Prépare les données des scores
         List<GameSessionManager.PlayerScoreData> scoresList = new List<GameSessionManager.PlayerScoreData>();
 
         foreach (var kvp in playerScores)
         {
             PlayerScore score = kvp.Value;
+#if WEB_BUILD
+            if (score.playerID != localPlayerNumber) continue;
+#endif
             scoresList.Add(new GameSessionManager.PlayerScoreData
             {
                 playerNumber = score.playerID,
@@ -375,6 +392,13 @@ public class ScoreManager : MonoBehaviour
                 perfectJumps = score.perfectJumps,              // Sauts parfaits
                 hasFinished = score.hasFinished
             });
+        }
+
+        if (scoresList.Count == 0)
+        {
+            if (showDebug) Debug.LogWarning("ScoreManager: no scores to send");
+            onComplete?.Invoke(false);
+            return;
         }
 
         GameSessionManager.Instance.SendScores(scoresList.ToArray(), onComplete);

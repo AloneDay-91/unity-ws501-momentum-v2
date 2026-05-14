@@ -50,6 +50,8 @@ public class MovingPlatform : MonoBehaviour
         Smooth      // Accélération/décélération (SmoothStep)
     }
 
+#if !WEB_BUILD
+    // --- Arcade / single-player path: local time-based integration --------------
     private Vector3 targetPosition;
     private bool movingToEnd = true;
     private float pauseTimer = 0f;
@@ -59,7 +61,6 @@ public class MovingPlatform : MonoBehaviour
 
     void Start()
     {
-        // Position initiale
         if (startAtEndPoint)
         {
             transform.localPosition = endPoint;
@@ -79,19 +80,14 @@ public class MovingPlatform : MonoBehaviour
 
     void Update()
     {
-        // Délai initial
         if (!hasStarted)
         {
             StopMoveSound();
             delayTimer -= Time.deltaTime;
-            if (delayTimer <= 0f)
-            {
-                hasStarted = true;
-            }
+            if (delayTimer <= 0f) hasStarted = true;
             return;
         }
 
-        // Pause aux extrémités
         if (isPaused)
         {
             StopMoveSound();
@@ -99,32 +95,14 @@ public class MovingPlatform : MonoBehaviour
             if (pauseTimer <= 0f)
             {
                 isPaused = false;
-                // Change de direction
                 movingToEnd = !movingToEnd;
                 targetPosition = movingToEnd ? endPoint : startPoint;
             }
             return;
         }
 
-        // Déplacement
         PlayMoveSound();
         MovePlatform();
-    }
-
-    void PlayMoveSound()
-    {
-        if (moveAudioSource != null && !moveAudioSource.isPlaying)
-        {
-            moveAudioSource.Play();
-        }
-    }
-
-    void StopMoveSound()
-    {
-        if (moveAudioSource != null && moveAudioSource.isPlaying)
-        {
-            moveAudioSource.Stop();
-        }
     }
 
     void MovePlatform()
@@ -134,10 +112,7 @@ public class MovingPlatform : MonoBehaviour
 
         if (distance < 0.01f)
         {
-            // Arrivé à destination
             transform.localPosition = targetPosition;
-
-            // Commence la pause
             if (pauseDuration > 0f)
             {
                 isPaused = true;
@@ -145,55 +120,145 @@ public class MovingPlatform : MonoBehaviour
             }
             else
             {
-                // Pas de pause, change de direction directement
                 movingToEnd = !movingToEnd;
                 targetPosition = movingToEnd ? endPoint : startPoint;
             }
             return;
         }
 
-        // Calcule le mouvement
         float step = speed * Time.deltaTime;
-
-        Vector3 newPosition;
-        if (movementType == MovementType.Smooth)
-        {
-            // Mouvement smooth (SmoothStep)
-            newPosition = Vector3.Lerp(currentPos, targetPosition, step / distance);
-        }
-        else
-        {
-            // Mouvement linéaire
-            newPosition = Vector3.MoveTowards(currentPos, targetPosition, step);
-        }
-
+        Vector3 newPosition = (movementType == MovementType.Smooth)
+            ? Vector3.Lerp(currentPos, targetPosition, step / distance)
+            : Vector3.MoveTowards(currentPos, targetPosition, step);
         transform.localPosition = newPosition;
     }
 
-    // Déplace les joueurs avec la plateforme
     void OnCollisionStay(Collision collision)
     {
         if (!movePlayersWithPlatform) return;
+        if (!collision.gameObject.CompareTag("Player")) return;
+        if (collision.contacts.Length == 0) return;
 
-        // Si c'est un joueur sur la plateforme
-        if (collision.gameObject.CompareTag("Player"))
+        Vector3 normal = collision.contacts[0].normal;
+        if (Vector3.Dot(normal, Vector3.down) > 0.5f)
         {
-            // Vérifie que le joueur est au-dessus
-            if (collision.contacts.Length > 0)
+            Rigidbody playerRb = collision.gameObject.GetComponent<Rigidbody>();
+            if (playerRb != null)
             {
-                Vector3 normal = collision.contacts[0].normal;
-                if (Vector3.Dot(normal, Vector3.down) > 0.5f) // Player is on top
-                {
-                    // Déplace le joueur avec la plateforme
-                    Rigidbody playerRb = collision.gameObject.GetComponent<Rigidbody>();
-                    if (playerRb != null)
-                    {
-                        Vector3 platformVelocity = (targetPosition - transform.localPosition).normalized * speed;
-                        playerRb.velocity = new Vector3(platformVelocity.x, playerRb.velocity.y, platformVelocity.z);
-                    }
-                }
+                Vector3 platformVelocity = (targetPosition - transform.localPosition).normalized * speed;
+                playerRb.velocity = new Vector3(platformVelocity.x, playerRb.velocity.y, platformVelocity.z);
             }
         }
+    }
+#endif
+
+#if WEB_BUILD
+    // --- Multiplayer path: position = pure function of shared server clock ----
+    // Both clients sample WebMatchClock.MatchTime (anchored to GameState.elapsedTime)
+    // so ComputePhase produces byte-identical world positions everywhere, which is
+    // what keeps the two clients visually in sync without per-platform broadcast.
+    private Vector3 _cachedLocalVelocity;
+
+    void Start()
+    {
+        // Pre-game pose so the platform isn't sitting at world origin while we wait
+        // for the first server elapsedTime tick.
+        transform.localPosition = startAtEndPoint ? endPoint : startPoint;
+    }
+
+    void Update()
+    {
+        if (WebMatchClock.Instance == null || !WebMatchClock.Instance.HasStarted)
+        {
+            // Hold pre-game pose until the match really starts on the server.
+            transform.localPosition = startAtEndPoint ? endPoint : startPoint;
+            _cachedLocalVelocity = Vector3.zero;
+            StopMoveSound();
+            return;
+        }
+
+        ComputePhase(WebMatchClock.Instance.MatchTime, out Vector3 pos, out Vector3 vel);
+        transform.localPosition = pos;
+        _cachedLocalVelocity = vel;
+
+        if (vel.sqrMagnitude > 0.0001f) PlayMoveSound();
+        else StopMoveSound();
+    }
+
+    private void ComputePhase(float matchTime, out Vector3 position, out Vector3 velocity)
+    {
+        Vector3 a = startAtEndPoint ? endPoint : startPoint;
+        Vector3 b = startAtEndPoint ? startPoint : endPoint;
+        position = a;
+        velocity = Vector3.zero;
+
+        float t = matchTime - initialDelay;
+        if (t < 0f) return;
+
+        float dist = Vector3.Distance(startPoint, endPoint);
+        if (dist < 0.0001f) return;
+
+        float legDuration = dist / Mathf.Max(0.0001f, speed);
+        float cycle = 2f * (legDuration + pauseDuration);
+        if (cycle < 0.0001f) return;
+
+        float u = t - Mathf.Floor(t / cycle) * cycle;
+
+        if (u < legDuration)
+        {
+            // a → b
+            float k = u / legDuration;
+            if (movementType == MovementType.Smooth) k = Mathf.SmoothStep(0f, 1f, k);
+            position = Vector3.Lerp(a, b, k);
+            velocity = (b - a).normalized * speed;
+        }
+        else if (u < legDuration + pauseDuration)
+        {
+            position = b;
+        }
+        else if (u < 2f * legDuration + pauseDuration)
+        {
+            // b → a
+            float k = (u - legDuration - pauseDuration) / legDuration;
+            if (movementType == MovementType.Smooth) k = Mathf.SmoothStep(0f, 1f, k);
+            position = Vector3.Lerp(b, a, k);
+            velocity = (a - b).normalized * speed;
+        }
+        else
+        {
+            position = a;
+        }
+    }
+
+    void OnCollisionStay(Collision collision)
+    {
+        if (!movePlayersWithPlatform) return;
+        if (!collision.gameObject.CompareTag("Player")) return;
+        if (collision.contacts.Length == 0) return;
+
+        Vector3 normal = collision.contacts[0].normal;
+        if (Vector3.Dot(normal, Vector3.down) <= 0.5f) return;
+
+        Rigidbody playerRb = collision.gameObject.GetComponent<Rigidbody>();
+        if (playerRb == null) return;
+
+        // _cachedLocalVelocity is local-space (computed against startPoint/endPoint).
+        // Convert to world for the rigidbody push.
+        Vector3 worldVel = transform.parent != null
+            ? transform.parent.TransformVector(_cachedLocalVelocity)
+            : _cachedLocalVelocity;
+        playerRb.velocity = new Vector3(worldVel.x, playerRb.velocity.y, worldVel.z);
+    }
+#endif
+
+    void PlayMoveSound()
+    {
+        if (moveAudioSource != null && !moveAudioSource.isPlaying) moveAudioSource.Play();
+    }
+
+    void StopMoveSound()
+    {
+        if (moveAudioSource != null && moveAudioSource.isPlaying) moveAudioSource.Stop();
     }
 
     // Visualisation dans l'éditeur
@@ -201,17 +266,14 @@ public class MovingPlatform : MonoBehaviour
     {
         if (!showGizmos) return;
 
-        // Point de départ (vert)
         Gizmos.color = Color.green;
         Vector3 worldStart = transform.parent != null ? transform.parent.TransformPoint(startPoint) : startPoint;
         Gizmos.DrawWireSphere(worldStart, 0.3f);
 
-        // Point d'arrivée (rouge)
         Gizmos.color = Color.red;
         Vector3 worldEnd = transform.parent != null ? transform.parent.TransformPoint(endPoint) : endPoint;
         Gizmos.DrawWireSphere(worldEnd, 0.3f);
 
-        // Ligne entre les deux points
         Gizmos.color = Color.yellow;
         Gizmos.DrawLine(worldStart, worldEnd);
     }
