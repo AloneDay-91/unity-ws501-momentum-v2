@@ -93,11 +93,19 @@ public class GameManager : MonoBehaviour
         InitializePlayers();
 
 #if WEB_BUILD
-        // Multiplayer: countdown is driven by the server (state.status: loading → countdown → playing).
-        // The local 3s timer would race with the other client; we follow the server clock instead.
-        GameSessionManager.OnGameFinished -= HandleServerGameFinished;
-        GameSessionManager.OnGameFinished += HandleServerGameFinished;
-        StartCoroutine(ServerDrivenCountdownCoroutine());
+        if (DevSolo.Active)
+        {
+            // Mode solo dev hors-ligne : aucun serveur → compte à rebours local.
+            StartCoroutine(StartCountdownCoroutine());
+        }
+        else
+        {
+            // Multiplayer: countdown is driven by the server (state.status: loading → countdown → playing).
+            // The local 3s timer would race with the other client; we follow the server clock instead.
+            GameSessionManager.OnGameFinished -= HandleServerGameFinished;
+            GameSessionManager.OnGameFinished += HandleServerGameFinished;
+            StartCoroutine(ServerDrivenCountdownCoroutine());
+        }
 #else
         StartCoroutine(StartCountdownCoroutine());
 #endif
