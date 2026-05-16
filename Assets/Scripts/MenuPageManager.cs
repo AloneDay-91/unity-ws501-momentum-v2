@@ -22,6 +22,9 @@ public class MenuPageManager : MonoBehaviour
     [Tooltip("Page Comment Jouer (Tutoriel)")]
     public GameObject howToPlayPage;
 
+    [Tooltip("Page de personnalisation des touches clavier")]
+    public GameObject controlsSettingsPage;
+
     [Header("Settings")]
     [Tooltip("Page à afficher au démarrage")]
     public GameObject startingPage;
@@ -53,6 +56,7 @@ public class MenuPageManager : MonoBehaviour
         if (qrCodePage != null) pages["qrcode"] = qrCodePage;
         if (lobbyPage != null) pages["lobby"] = lobbyPage;
         if (howToPlayPage != null) pages["howtoplay"] = howToPlayPage;
+        if (controlsSettingsPage != null) pages["controls"] = controlsSettingsPage;
 
         // Cache toutes les pages
         foreach (var page in pages.Values)
@@ -157,6 +161,12 @@ public class MenuPageManager : MonoBehaviour
     public void ShowHowToPlayPage()
     {
         ShowPage(howToPlayPage);
+    }
+
+    /// <summary>Affiche l'écran de personnalisation des touches.</summary>
+    public void ShowControlsSettingsPage()
+    {
+        if (controlsSettingsPage != null) ShowPage(controlsSettingsPage);
     }
 
     /// <summary>
