@@ -49,15 +49,18 @@ Le mode DevSolo garde le rechargement local (`GameManager.RestartGame()`). Le fl
 
 ### 3. Scène menu — `MenuPageManager.Start()`
 
-Si `RematchState.ReturningForRematch` est vrai, afficher directement la `lobbyPage` au
-lieu de la `startingPage`/home. Le flag n'est PAS remis à faux ici — c'est `LobbyPageUI`
-qui le consomme (voir §4), et `MenuPageManager.Start()` s'exécute avant
-`LobbyPageUI.OnEnable()` puisque `ShowPage()` active la page de façon synchrone.
+`MenuPageManager` est le **seul consommateur** du flag (pour éviter toute fragilité liée
+à l'ordre des `OnEnable`). Dans `Start()` :
+- Lire le flag dans une variable locale puis le remettre à faux immédiatement :
+  `bool rematch = RematchState.ReturningForRematch; RematchState.ReturningForRematch = false;`
+- Si `rematch` est vrai : activer le mode rematch sur la `LobbyPage`
+  (`lobbyPage.GetComponent<LobbyPageUI>().EnterRematchMode()`) puis `ShowPage(lobbyPage)`.
+- Sinon : comportement actuel (afficher `startingPage`/home).
 
 ### 4. `LobbyPageUI` — mode rematch-attente
 
-Dans `OnEnable()`, lire le flag dans un champ d'instance puis le consommer :
-`_rematchMode = RematchState.ReturningForRematch; RematchState.ReturningForRematch = false;`
+`LobbyPageUI` expose une méthode publique `EnterRematchMode()` qui positionne un champ
+d'instance `_rematchMode = true`. `MenuPageManager` l'appelle avant d'afficher la page.
 
 Quand `_rematchMode` est vrai :
 - L'affichage indique « En attente de l'autre joueur… ».
