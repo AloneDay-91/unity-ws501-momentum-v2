@@ -73,10 +73,12 @@ public class LaserWall : MonoBehaviour
     private Collider wallCollider;
     private Renderer wallRenderer;
 
-    // Suivi du contact joueur↔mur : temps de contact continu accumulé par joueur.
-    // Un joueur est éliminé dès qu'il reste en contact eliminationDelay secondes.
-    private readonly Dictionary<GameObject, float> contactTimers = new Dictionary<GameObject, float>();
-    private readonly List<GameObject> _contactKeysBuffer = new List<GameObject>();
+    // Élimination par franchissement de plan : le mur est une fine tranche (scale X≈0),
+    // donc les triggers/overlaps de collision sont peu fiables. On considère plutôt qu'un
+    // joueur est « rattrapé » dès que le plan du mur l'a dépassé. behindTimers accumule
+    // le temps passé derrière le mur, par joueur.
+    private readonly Dictionary<GameObject, float> behindTimers = new Dictionary<GameObject, float>();
+    private readonly List<GameObject> _playersBuffer = new List<GameObject>();
 
     // Événement pour notifier l'élimination d'un joueur
     public static System.Action<GameObject> OnPlayerEliminated;
@@ -189,82 +191,69 @@ public class LaserWall : MonoBehaviour
             }
         }
 
-        // Élimination par contrôle continu du contact (et non via une coroutine à
-        // instant unique) — robuste aux entrées/sorties répétées et au collage au bord.
-        UpdatePlayerContacts();
-    }
-
-    void OnTriggerEnter(Collider other)
-    {
-        // Enregistre le joueur pour le suivi de contact. L'élimination réelle est faite
-        // par UpdatePlayerContacts (contrôle continu chaque frame).
-        if (other.CompareTag(playerTag))
-        {
-            if (!contactTimers.ContainsKey(other.gameObject))
-            {
-                contactTimers[other.gameObject] = 0f;
-            }
-            if (showDebug)
-            {
-                Debug.Log($"Mur de laser: Joueur {other.name} en contact — suivi démarré");
-            }
-        }
-    }
-
-    void OnTriggerExit(Collider other)
-    {
-        // Le joueur a quitté le mur — on arrête de le suivre.
-        if (other.CompareTag(playerTag))
-        {
-            contactTimers.Remove(other.gameObject);
-        }
+        // Élimination : un joueur que le plan du mur a dépassé est « rattrapé ».
+        CheckPlayersCaught();
     }
 
     /// <summary>
-    /// Contrôle continu : accumule le temps de contact de chaque joueur suivi et
-    /// l'élimine après eliminationDelay secondes de contact ininterrompu. Sortir du
-    /// mur remet le délai de grâce à zéro.
+    /// Élimination par franchissement de plan. Le mur est une fine tranche : se fier aux
+    /// triggers de collision est peu fiable (le joueur traverse entre deux frames, et
+    /// l'ancien test à instant unique ratait selon la vitesse relative et le sens de
+    /// passage). On considère qu'un joueur est rattrapé dès que le plan du mur l'a
+    /// dépassé, et on l'élimine après eliminationDelay secondes passées derrière le mur
+    /// — repasser devant remet le délai de grâce à zéro.
     /// </summary>
-    private void UpdatePlayerContacts()
+    private void CheckPlayersCaught()
     {
-        if (contactTimers.Count == 0) return;
+        // Init paresseux : on récupère les joueurs une fois le mur actif. Le startDelay
+        // garantit qu'ils existent tous à ce moment (countdown fini, joueur distant spawné).
+        if (behindTimers.Count == 0)
+        {
+            foreach (var go in GameObject.FindGameObjectsWithTag(playerTag))
+            {
+                behindTimers[go] = 0f;
+            }
+            if (behindTimers.Count == 0) return;
+        }
 
-        _contactKeysBuffer.Clear();
-        _contactKeysBuffer.AddRange(contactTimers.Keys);
+        Vector3 dir = moveDirection.normalized;
+        if (dir == Vector3.zero) return;
+
+        _playersBuffer.Clear();
+        _playersBuffer.AddRange(behindTimers.Keys);
 
         GameObject toEliminate = null;
 
-        foreach (var player in _contactKeysBuffer)
+        foreach (var player in _playersBuffer)
         {
             if (player == null || !player.activeInHierarchy)
             {
-                contactTimers.Remove(player);
+                behindTimers.Remove(player);
                 continue;
             }
 
-            Collider playerCollider = player.GetComponent<Collider>();
-            bool inContact = playerCollider != null
-                && wallCollider != null
-                && wallCollider.bounds.Intersects(playerCollider.bounds);
+            // Projection du vecteur mur→joueur sur la direction d'avancée du mur.
+            // along > 0 : le joueur est encore devant le mur. along <= 0 : le mur l'a dépassé.
+            float along = Vector3.Dot(player.transform.position - transform.position, dir);
 
-            if (inContact)
+            if (along <= 0f)
             {
-                contactTimers[player] += Time.deltaTime;
-                if (contactTimers[player] >= eliminationDelay)
+                behindTimers[player] += Time.deltaTime;
+                if (behindTimers[player] >= eliminationDelay)
                 {
                     toEliminate = player;
                 }
             }
             else
             {
-                // Sorti du mur : le délai de grâce repart de zéro.
-                contactTimers[player] = 0f;
+                // Le joueur est repassé devant le mur : le délai de grâce repart de zéro.
+                behindTimers[player] = 0f;
             }
         }
 
         if (toEliminate != null)
         {
-            contactTimers.Remove(toEliminate);
+            behindTimers.Remove(toEliminate);
             EliminatePlayerNow(toEliminate);
         }
     }
@@ -333,7 +322,7 @@ public class LaserWall : MonoBehaviour
         transform.position = startPosition;
         currentSpeed = moveSpeed;
         isMoving = false;
-        contactTimers.Clear();
+        behindTimers.Clear();
 
         // Rend le mur invisible à nouveau
         SetWallVisibility(false);
