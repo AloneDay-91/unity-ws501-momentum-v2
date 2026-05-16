@@ -20,6 +20,11 @@ public class MenuManager : MonoBehaviour
 
     void Update()
     {
+#if WEB_BUILD
+        // Pas de borne d'arcade en WebGL : ni minuteur d'inactivité ni retour menu forcé.
+        if (quitText != null && quitText.gameObject.activeSelf) quitText.gameObject.SetActive(false);
+        return;
+#else
         if (Input.GetButton("Coin"))
         {
             heldQuitTimer += Time.unscaledDeltaTime;
@@ -49,10 +54,13 @@ public class MenuManager : MonoBehaviour
             quitText.gameObject.SetActive(true);
             quitText.text = MenuMessage + new string('.', (int)Mathf.Min(Mathf.Max(heldQuitTimer * 3f, afkTimer - AfkTime + 10f * 0.4f), 3));
         } else quitText.gameObject.SetActive(false);
+#endif
     }
 
     public void OnApplicationQuit()
     {
+#if !WEB_BUILD
         BackToMenu();
+#endif
     }
 }
