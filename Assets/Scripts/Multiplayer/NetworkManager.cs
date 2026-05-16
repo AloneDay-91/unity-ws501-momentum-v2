@@ -46,6 +46,11 @@ public class NetworkManager : MonoBehaviour
 
     async void Start()
     {
+        if (DevSolo.Active)
+        {
+            Debug.Log("[NetworkManager] DevSolo actif — connexion Colyseus ignorée");
+            return;
+        }
         Debug.Log($"[DIAG][NetworkManager] Start fired at T={Time.realtimeSinceStartup:F3}s, WebBootstrap.IsReady={WebBootstrap.IsReady}, sessionId='{WebBootstrap.SessionId}', hasToken={!string.IsNullOrEmpty(WebBootstrap.Token)}");
         if (!WebBootstrap.IsReady)
         {
