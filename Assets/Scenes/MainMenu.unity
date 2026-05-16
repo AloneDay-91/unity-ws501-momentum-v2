@@ -496,6 +496,7 @@ MonoBehaviour:
   qrCodePage: {fileID: 1363030592}
   lobbyPage: {fileID: 273232531}
   howToPlayPage: {fileID: 1731382735}
+  controlsSettingsPage: {fileID: 0}
   startingPage: {fileID: 716521993}
   transitionDuration: 0.3
   showDebug: 1
@@ -4411,6 +4412,7 @@ MonoBehaviour:
   threshold: 0.5
   cooldownDuration: 0.3
   showDebugLogs: 0
+  controlsHintText: {fileID: 0}
 --- !u!224 &1731382738
 RectTransform:
   m_ObjectHideFlags: 0
