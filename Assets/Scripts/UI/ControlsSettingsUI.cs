@@ -33,6 +33,8 @@ public class ControlsSettingsUI : MonoBehaviour
     [Tooltip("Texte affiché pendant la capture d'une touche")]
     public string capturingLabel = "Appuie sur une touche…";
 
+    private static readonly KeyCode[] AllKeyCodes = (KeyCode[])System.Enum.GetValues(typeof(KeyCode));
+
     private ActionRow capturingRow = null;
 
     void Start()
@@ -67,7 +69,7 @@ public class ControlsSettingsUI : MonoBehaviour
             return;
         }
 
-        foreach (KeyCode key in System.Enum.GetValues(typeof(KeyCode)))
+        foreach (KeyCode key in AllKeyCodes)
         {
             if (!Input.GetKeyDown(key)) continue;
             if (!IsAssignableKey(key)) continue;

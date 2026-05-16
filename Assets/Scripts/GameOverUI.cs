@@ -14,7 +14,7 @@ public class GameOverUI : MonoBehaviour
             rematch.RequestRematch();
             return;
         }
-        Debug.LogWarning("[GameOverUI] RematchController introuvable — fallback reload local");
+        Debug.LogError("[GameOverUI] RematchController introuvable — fallback reload local");
 #endif
         if (GameManager.Instance != null)
         {

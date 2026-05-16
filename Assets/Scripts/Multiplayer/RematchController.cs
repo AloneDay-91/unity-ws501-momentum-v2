@@ -27,7 +27,6 @@ public class RematchController : MonoBehaviour
 
     void OnEnable()
     {
-        GameSessionManager.OnGameStarted += HandleGameStarted;
         if (NetworkManager.Instance != null)
         {
             NetworkManager.Instance.OnPlayerRemoved += HandlePlayerRemoved;
@@ -53,6 +52,7 @@ public class RematchController : MonoBehaviour
         {
             NetworkManager.Instance.SendRematch();
         }
+        GameSessionManager.OnGameStarted += HandleGameStarted;
 
         if (rematchButton != null) rematchButton.SetActive(false);
         if (waitingMessage != null) waitingMessage.SetActive(true);
