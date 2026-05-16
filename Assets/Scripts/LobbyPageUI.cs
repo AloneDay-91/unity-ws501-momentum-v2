@@ -287,15 +287,20 @@ public class LobbyPageUI : MonoBehaviour
     /// </summary>
     public void OnBackButtonClicked()
     {
-        if (MenuPageManager.Instance == null) return;
-
 #if WEB_BUILD
+        // Le retour en mode rematch ne dépend pas de MenuPageManager : on le traite
+        // avant la garde ci-dessous pour ne jamais avaler le NotifyQuit.
         if (_rematchMode)
         {
             if (showDebug) Debug.Log("LobbyPageUI: rematch annulé → retour au site");
             WebBridge.NotifyQuit(WebBootstrap.SessionId);
             return;
         }
+#endif
+
+        if (MenuPageManager.Instance == null) return;
+
+#if WEB_BUILD
         // Pas de ResetSession() : sessionId, room Colyseus, pseudos et bothPlayersReady
         // doivent survivre à un aller-retour dans le menu.
         MenuPageManager.Instance.ShowHomePage();

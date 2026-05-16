@@ -63,9 +63,10 @@ Le mode DevSolo garde le rechargement local (`GameManager.RestartGame()`). Le fl
 d'instance `_rematchMode = true`. `MenuPageManager` l'appelle avant d'afficher la page.
 
 Quand `_rematchMode` est vrai :
-- L'affichage indique « En attente de l'autre joueur… ».
-- Le bouton « Démarrer la partie » est **masqué** (`startGameButton.gameObject.SetActive(false)`)
-  — le redémarrage est automatique, pas manuel.
+- Le bouton « Démarrer la partie » reste **désactivé** (`interactable = false`) et sert
+  d'indicateur d'attente : son texte affiche « En attente de l'autre joueur… ». Le
+  redémarrage est automatique, pas manuel — c'est volontairement la même apparence que
+  le lobby au premier démarrage (bouton grisé tant que l'autre joueur n'est pas là).
 - `OnGameStarted` → `LoadScene("main")` : comportement existant, inchangé. C'est ce qui
   relance la partie quand le serveur repasse en `"loading"`.
 - Abonnement à `NetworkManager.OnPlayerRemoved` (`#if WEB_BUILD`) : si l'autre joueur
