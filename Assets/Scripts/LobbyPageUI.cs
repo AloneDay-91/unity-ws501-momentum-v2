@@ -214,24 +214,24 @@ public class LobbyPageUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Retour au menu principal (annule la session)
+    /// Retour au menu. En WEB_BUILD la session vient de l'URL et la connexion Colyseus
+    /// est persistante — on ne la détruit PAS, on navigue juste vers la home pour que le
+    /// joueur puisse consulter « Comment jouer » puis revenir au lobby sans perdre la partie.
     /// </summary>
     public void OnBackButtonClicked()
     {
-        // Réinitialise la session
+        if (MenuPageManager.Instance == null) return;
+
+#if WEB_BUILD
+        // Pas de ResetSession() : sessionId, room Colyseus, pseudos et bothPlayersReady
+        // doivent survivre à un aller-retour dans le menu.
+        MenuPageManager.Instance.ShowHomePage();
+#else
+        // En arcade, le « Retour » annule réellement la session en cours.
         if (GameSessionManager.Instance != null)
         {
             GameSessionManager.Instance.ResetSession();
         }
-
-        if (MenuPageManager.Instance == null) return;
-
-#if WEB_BUILD
-        // En WEB_BUILD, ShowQRCodePage est redirigé vers la LobbyPage (= boucle).
-        // On va explicitement à la home page pour un vrai retour visuel.
-        MenuPageManager.Instance.ShowHomePage();
-#else
-        // En arcade, la lobby vient juste après la QR code page — c'est le bon "back".
         MenuPageManager.Instance.ShowQRCodePage();
 #endif
     }
