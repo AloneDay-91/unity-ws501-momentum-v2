@@ -48,6 +48,10 @@ public class HowToPlayPageUI : MonoBehaviour
     [Header("Debug")]
     public bool showDebugLogs = true;
 
+    [Header("Contrôles")]
+    [Tooltip("Texte affichant les touches du device courant (optionnel)")]
+    public TMP_Text controlsHintText;
+
     private int currentIndex = 0;
     private float currentCooldown = 0f; // Timer actuel
 
@@ -62,6 +66,12 @@ public class HowToPlayPageUI : MonoBehaviour
             backButton.onClick.AddListener(OnBackButtonClicked);
         }
 
+        RefreshControlsHint();
+        if (InputDeviceDetector.Instance != null)
+        {
+            InputDeviceDetector.Instance.OnDeviceChanged += HandleDeviceChanged;
+        }
+        KeyboardControls.OnChanged += RefreshControlsHint;
         UpdateUI();
     }
 
@@ -72,6 +82,11 @@ public class HowToPlayPageUI : MonoBehaviour
         {
             backButton.onClick.RemoveListener(OnBackButtonClicked);
         }
+        if (InputDeviceDetector.Instance != null)
+        {
+            InputDeviceDetector.Instance.OnDeviceChanged -= HandleDeviceChanged;
+        }
+        KeyboardControls.OnChanged -= RefreshControlsHint;
     }
 
     void Update()
@@ -172,6 +187,17 @@ public class HowToPlayPageUI : MonoBehaviour
         // Flèches visuelles
         if (leftArrow != null) leftArrow.SetActive(currentIndex > 0);
         if (rightArrow != null) rightArrow.SetActive(currentIndex < steps.Count - 1);
+    }
+
+    private void HandleDeviceChanged(InputDeviceDetector.Device _) => RefreshControlsHint();
+
+    private void RefreshControlsHint()
+    {
+        if (controlsHintText == null) return;
+        var device = InputDeviceDetector.Instance != null
+            ? InputDeviceDetector.Instance.CurrentDevice
+            : InputDeviceDetector.Device.Keyboard;
+        controlsHintText.text = ControlScheme.HintLine(device);
     }
 
     // Fonction appelée lors du clic sur le bouton retour
