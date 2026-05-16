@@ -63,6 +63,19 @@ public class MenuPageManager : MonoBehaviour
             }
         }
 
+        // Retour d'un « Rejouer » : on consomme le flag et on va droit au lobby en mode
+        // attente, au lieu d'afficher la page d'accueil.
+        bool rematch = RematchState.ReturningForRematch;
+        RematchState.ReturningForRematch = false;
+
+        if (rematch && lobbyPage != null)
+        {
+            var lobbyUI = lobbyPage.GetComponent<LobbyPageUI>();
+            if (lobbyUI != null) lobbyUI.EnterRematchMode();
+            ShowPage(lobbyPage);
+            return;
+        }
+
         // Affiche la page de départ (en WEB_BUILD comme en arcade : home page).
         // En WEB_BUILD, le bouton Play / ShowQRCodePage sera redirigé vers la LobbyPage
         // pour skipper la génération de QR code (inutile : la session vient déjà de l'URL).
