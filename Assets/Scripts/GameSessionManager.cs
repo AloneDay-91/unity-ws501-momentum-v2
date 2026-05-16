@@ -625,6 +625,17 @@ public class GameSessionManager : MonoBehaviour
         // after a scene reload (LocalPlayerSync, camera viewport, P2-disable must re-apply).
         _localPlayerInitialized = false;
 
+        // Les clones des joueurs distants sont des objets de scène : ils ont été détruits
+        // au déchargement de la scène précédente. On vide le dictionnaire pour que le
+        // catch-up ci-dessous les re-spawne dans la nouvelle scène. Sans ça, après un
+        // « Rejouer », HandleRemotePlayerAdded les croit « déjà présents » et les saute
+        // → l'autre joueur reste invisible.
+        foreach (var kv in remoteNetworkPlayers)
+        {
+            if (kv.Value != null) Destroy(kv.Value);
+        }
+        remoteNetworkPlayers.Clear();
+
         // Mode solo dev hors-ligne : pas de serveur pour assigner un slot joueur.
         // On configure directement P1 comme joueur local et on saute tout le wiring réseau.
         if (DevSolo.Active)
