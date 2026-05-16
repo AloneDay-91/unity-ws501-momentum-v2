@@ -62,18 +62,45 @@ public class PlayerInput : MonoBehaviour
             jumpBufferTimer -= Time.deltaTime;
         }
 
+#if WEB_BUILD
+        // En web : si le device actif est le clavier, on lit UNIQUEMENT les KeyCode
+        // rebindables (KeyboardControls). Si c'est la manette, on lit les axes de
+        // l'Input Manager. Lire les deux séparément évite qu'une ancienne touche encore
+        // câblée sur l'axe Input Manager continue de répondre après un rebinding.
+        bool keyboardMode = InputDeviceDetector.Instance == null
+            || InputDeviceDetector.Instance.CurrentDevice == InputDeviceDetector.Device.Keyboard;
+
+        if (keyboardMode)
+        {
+            float h = 0f;
+            if (Input.GetKey(KeyboardControls.Get(KeyboardControls.Action.Left)))  h -= 1f;
+            if (Input.GetKey(KeyboardControls.Get(KeyboardControls.Action.Right))) h += 1f;
+            HorizontalInput = h;
+            VerticalInput = 0f;
+
+            if (Input.GetKeyDown(KeyboardControls.Get(KeyboardControls.Action.Jump)))
+            {
+                jumpBufferTimer = jumpBufferDuration;
+            }
+            SlidePressed = Input.GetKeyDown(KeyboardControls.Get(KeyboardControls.Action.Slide));
+            SlideHeld = Input.GetKey(KeyboardControls.Get(KeyboardControls.Action.Slide));
+            LightTogglePressed = Input.GetKeyDown(KeyboardControls.Get(KeyboardControls.Action.Light));
+            return;
+        }
+        // mode manette : on continue vers la lecture des axes ci-dessous
+#endif
+
         if (Input.GetButtonDown(jumpButtonName))
         {
             jumpBufferTimer = jumpBufferDuration;
         }
-        
-        // --- LECTURE DES INPUTS ---
+
         HorizontalInput = Input.GetAxis(horizontalAxisName);
         VerticalInput = Input.GetAxis(verticalAxisName);
-        
+
         SlidePressed = Input.GetButtonDown(slideButtonName);
         SlideHeld = Input.GetButton(slideButtonName);
-        
-        LightTogglePressed = Input.GetButtonDown(lightButtonName); // <-- NOUVEAU
+
+        LightTogglePressed = Input.GetButtonDown(lightButtonName);
     }
 }
