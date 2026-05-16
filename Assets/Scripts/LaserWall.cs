@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 
 /// <summary>
 /// Mur de laser mortel qui avance et élimine les joueurs qui se font rattraper
@@ -71,6 +72,11 @@ public class LaserWall : MonoBehaviour
     private float currentSpeed;
     private Collider wallCollider;
     private Renderer wallRenderer;
+
+    // Suivi du contact joueur↔mur : temps de contact continu accumulé par joueur.
+    // Un joueur est éliminé dès qu'il reste en contact eliminationDelay secondes.
+    private readonly Dictionary<GameObject, float> contactTimers = new Dictionary<GameObject, float>();
+    private readonly List<GameObject> _contactKeysBuffer = new List<GameObject>();
 
     // Événement pour notifier l'élimination d'un joueur
     public static System.Action<GameObject> OnPlayerEliminated;
@@ -182,42 +188,84 @@ public class LaserWall : MonoBehaviour
                 Debug.Log("Mur de laser: Position maximale atteinte, arrêt.");
             }
         }
+
+        // Élimination par contrôle continu du contact (et non via une coroutine à
+        // instant unique) — robuste aux entrées/sorties répétées et au collage au bord.
+        UpdatePlayerContacts();
     }
 
     void OnTriggerEnter(Collider other)
     {
-        // Vérifie si c'est un joueur
+        // Enregistre le joueur pour le suivi de contact. L'élimination réelle est faite
+        // par UpdatePlayerContacts (contrôle continu chaque frame).
         if (other.CompareTag(playerTag))
         {
-            StartCoroutine(EliminatePlayer(other.gameObject));
+            if (!contactTimers.ContainsKey(other.gameObject))
+            {
+                contactTimers[other.gameObject] = 0f;
+            }
+            if (showDebug)
+            {
+                Debug.Log($"Mur de laser: Joueur {other.name} en contact — suivi démarré");
+            }
         }
     }
 
-    void OnTriggerStay(Collider other)
+    void OnTriggerExit(Collider other)
     {
-        // Continue de vérifier si le joueur est dans le mur
+        // Le joueur a quitté le mur — on arrête de le suivre.
         if (other.CompareTag(playerTag))
         {
-            // Le joueur est toujours dans le mur, on peut ajouter des effets visuels
-            // Par exemple, faire clignoter le joueur
+            contactTimers.Remove(other.gameObject);
         }
     }
 
-    private IEnumerator EliminatePlayer(GameObject player)
+    /// <summary>
+    /// Contrôle continu : accumule le temps de contact de chaque joueur suivi et
+    /// l'élimine après eliminationDelay secondes de contact ininterrompu. Sortir du
+    /// mur remet le délai de grâce à zéro.
+    /// </summary>
+    private void UpdatePlayerContacts()
     {
-        if (showDebug)
+        if (contactTimers.Count == 0) return;
+
+        _contactKeysBuffer.Clear();
+        _contactKeysBuffer.AddRange(contactTimers.Keys);
+
+        GameObject toEliminate = null;
+
+        foreach (var player in _contactKeysBuffer)
         {
-            Debug.Log($"Mur de laser: Joueur {player.name} touché ! Élimination dans {eliminationDelay}s...");
+            if (player == null || !player.activeInHierarchy)
+            {
+                contactTimers.Remove(player);
+                continue;
+            }
+
+            Collider playerCollider = player.GetComponent<Collider>();
+            bool inContact = playerCollider != null
+                && wallCollider != null
+                && wallCollider.bounds.Intersects(playerCollider.bounds);
+
+            if (inContact)
+            {
+                contactTimers[player] += Time.deltaTime;
+                if (contactTimers[player] >= eliminationDelay)
+                {
+                    toEliminate = player;
+                }
+            }
+            else
+            {
+                // Sorti du mur : le délai de grâce repart de zéro.
+                contactTimers[player] = 0f;
+            }
         }
 
-        // Donne un peu de temps au joueur (feedback visuel)
-        yield return new WaitForSeconds(eliminationDelay);
-
-        // Vérifie si le joueur est toujours en contact
-        Collider playerCollider = player.GetComponent<Collider>();
-        if (playerCollider != null && wallCollider.bounds.Intersects(playerCollider.bounds))
+        if (toEliminate != null)
         {
-            EliminatePlayerNow(player);
+            contactTimers.Remove(toEliminate);
+            EliminatePlayerNow(toEliminate);
         }
     }
 
@@ -285,6 +333,7 @@ public class LaserWall : MonoBehaviour
         transform.position = startPosition;
         currentSpeed = moveSpeed;
         isMoving = false;
+        contactTimers.Clear();
 
         // Rend le mur invisible à nouveau
         SetWallVisibility(false);
