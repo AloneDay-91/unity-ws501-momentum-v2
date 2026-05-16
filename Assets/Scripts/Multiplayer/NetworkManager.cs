@@ -130,6 +130,7 @@ public class NetworkManager : MonoBehaviour
     public void SendFinish(float score) => Room?.Send("finish", new FinishPayload { score = score });
     public void SendSceneReady() => Room?.Send("sceneReady");
     public void SendDeath() => Room?.Send("death");
+    public void SendRematch() => Room?.Send("rematch");
 
     void OnDestroy()
     {
