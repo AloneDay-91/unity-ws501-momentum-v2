@@ -71,7 +71,6 @@ public class HowToPlayPageUI : MonoBehaviour
         {
             InputDeviceDetector.Instance.OnDeviceChanged += HandleDeviceChanged;
         }
-        KeyboardControls.OnChanged += RefreshControlsHint;
         UpdateUI();
     }
 
@@ -86,7 +85,6 @@ public class HowToPlayPageUI : MonoBehaviour
         {
             InputDeviceDetector.Instance.OnDeviceChanged -= HandleDeviceChanged;
         }
-        KeyboardControls.OnChanged -= RefreshControlsHint;
     }
 
     void Update()
