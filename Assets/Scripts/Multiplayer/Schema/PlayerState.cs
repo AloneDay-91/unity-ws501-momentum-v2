@@ -83,5 +83,8 @@ public PlayerState() { }
 
 	[Type(22, "number")]
 	public float actionId = default(float);
+
+	[Type(23, "boolean")]
+	public bool wantsRematch = default(bool);
 }
 
