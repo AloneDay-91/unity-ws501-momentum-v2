@@ -551,6 +551,15 @@ public class GameManager : MonoBehaviour
     private void CheckAllPlayersFinished()
     {
 #if WEB_BUILD
+        if (DevSolo.Active)
+        {
+            // Solo dev hors-ligne : un seul joueur local. Dès qu'il a terminé le parcours
+            // ou été éliminé, la partie est finie — pas de room serveur à interroger.
+            gameInProgress = false;
+            ShowFinalGameOver();
+            return;
+        }
+
         // Client-side fallback so the panel shows even if the server status flip is delayed
         // or the OnStateChange handler isn't firing for some reason. Count from the live
         // Colyseus room state — both players must have isAlive==false OR hasFinished==true.
