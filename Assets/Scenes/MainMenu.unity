@@ -496,7 +496,6 @@ MonoBehaviour:
   qrCodePage: {fileID: 1363030592}
   lobbyPage: {fileID: 273232531}
   howToPlayPage: {fileID: 1731382735}
-  controlsSettingsPage: {fileID: 0}
   startingPage: {fileID: 716521993}
   transitionDuration: 0.3
   showDebug: 1
@@ -2260,8 +2259,8 @@ MonoBehaviour:
   manageAudioListeners: 1
   showAudioListenerDebug: 1
   sounds:
-  - name: Memora
-    clip: {fileID: 8300000, guid: 06666861b2ce8492ba2505ae1396083f, type: 3}
+  - name: jonathan_griffin-return
+    clip: {fileID: 8300000, guid: 13d053f0cef99424d82402b7126e2ce1, type: 3}
     volume: 0.5
     pitch: 1
     pitchVariation: 0
@@ -3917,7 +3916,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f76806a62e2bf4bbcb18655ea82700b6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  musicName: Memora
+  musicName: jonathan_griffin-return
   playOnStart: 1
   fadeInDuration: 1
   fadeOutDuration: 0.5

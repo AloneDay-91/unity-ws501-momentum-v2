@@ -22978,8 +22978,8 @@ MonoBehaviour:
   manageAudioListeners: 1
   showAudioListenerDebug: 1
   sounds:
-  - name: DanceX
-    clip: {fileID: 8300000, guid: e9a57e1162df545df8ca5025e4ecbde5, type: 3}
+  - name: bransboynd-terminal
+    clip: {fileID: 8300000, guid: a9f77299f0e774e8780b266db3e45466, type: 3}
     volume: 0.5
     pitch: 1
     pitchVariation: 0
@@ -43189,7 +43189,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f76806a62e2bf4bbcb18655ea82700b6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  musicName: DanceX
+  musicName: bransboynd-terminal
   playOnStart: 1
   fadeInDuration: 1
   fadeOutDuration: 0.5
