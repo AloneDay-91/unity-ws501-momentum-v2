@@ -6,18 +6,18 @@ public class GameOverUI : MonoBehaviour
     public void RestartGame()
     {
 #if WEB_BUILD
-        // En multijoueur web, « Rejouer » est synchronisé via RematchController.
-        // En mode solo dev (hors-ligne) il n'y a pas de réseau : on saute le rematch
-        // et on recharge la scène en local.
         if (!DevSolo.Active)
         {
-            var rematch = FindObjectOfType<RematchController>();
-            if (rematch != null)
+            // Rejouer synchronisé : on prévient le serveur et on retourne sur le lobby
+            // (« en attente de l'autre joueur »). Quand les deux joueurs ont cliqué,
+            // le serveur relance la partie et le lobby recharge "main" automatiquement.
+            if (NetworkManager.Instance != null)
             {
-                rematch.RequestRematch();
-                return;
+                NetworkManager.Instance.SendRematch();
             }
-            Debug.LogError("[GameOverUI] RematchController introuvable — fallback reload local");
+            RematchState.ReturningForRematch = true;
+            SceneManager.LoadScene("MainMenu");
+            return;
         }
 #endif
         if (GameManager.Instance != null)
