@@ -625,6 +625,16 @@ public class GameSessionManager : MonoBehaviour
         // after a scene reload (LocalPlayerSync, camera viewport, P2-disable must re-apply).
         _localPlayerInitialized = false;
 
+        // Mode solo dev hors-ligne : pas de serveur pour assigner un slot joueur.
+        // On configure directement P1 comme joueur local et on saute tout le wiring réseau.
+        if (DevSolo.Active)
+        {
+            if (showDebug) Debug.Log("[GameSessionManager] DevSolo — configuration P1 local, sans réseau");
+            _localPlayerNumber = 1;
+            SetupLocalPlayer(1, attachSync: false);
+            return;
+        }
+
         // If we already know our playerNumber from a previous InitWebMode call, apply it immediately.
         // Useful when Room state was populated before the main scene loaded.
         if (_localPlayerNumber > 0)
@@ -794,7 +804,7 @@ public class GameSessionManager : MonoBehaviour
     /// (P1 or P2), disable the other one, attach LocalPlayerSync to ours, and switch
     /// the camera viewport to fullscreen for WebGL (no split-screen in single-local-player mode).
     /// </summary>
-    private void SetupLocalPlayer(int playerNumber)
+    private void SetupLocalPlayer(int playerNumber, bool attachSync = true)
     {
         if (_localP1Go == null && _localP2Go == null)
         {
@@ -820,7 +830,7 @@ public class GameSessionManager : MonoBehaviour
         // Ensure the local slot is active (in case a prior pass disabled it)
         if (!mine.activeSelf) mine.SetActive(true);
 
-        if (mine.GetComponent<LocalPlayerSync>() == null)
+        if (attachSync && mine.GetComponent<LocalPlayerSync>() == null)
             mine.AddComponent<LocalPlayerSync>();
 
         // Fullscreen camera: arcade mode uses split (P1 top, P2 bottom). In WebGL there's only
