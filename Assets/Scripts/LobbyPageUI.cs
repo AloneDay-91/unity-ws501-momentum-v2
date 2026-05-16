@@ -40,6 +40,16 @@ public class LobbyPageUI : MonoBehaviour
     [Header("Debug")]
     public bool showDebug = true;
 
+    // Mode « rejouer » : la page a été ouverte en retour d'un clic « Rejouer ».
+    private bool _rematchMode = false;
+    private bool _opponentLeft = false;
+
+    /// <summary>Appelé par MenuPageManager avant d'afficher le lobby en retour de « Rejouer ».</summary>
+    public void EnterRematchMode()
+    {
+        _rematchMode = true;
+    }
+
     void OnEnable()
     {
         // S'abonne à l'événement de démarrage de partie
@@ -51,8 +61,21 @@ public class LobbyPageUI : MonoBehaviour
         GameSessionManager.OnPlayer2Joined += OnPlayerInfoChanged;
         GameSessionManager.OnBothPlayersReady += OnBothPlayersReady;
 
+#if WEB_BUILD
+        if (_rematchMode && NetworkManager.Instance != null)
+        {
+            NetworkManager.Instance.OnPlayerRemoved += HandlePlayerRemovedDuringRematch;
+        }
+#endif
+
         // Rafraîchit l'affichage quand la page s'active
         UpdateDisplay();
+
+#if WEB_BUILD
+        // Course possible : l'autre joueur peut avoir déclenché le redémarrage serveur
+        // pendant le chargement de cette scène — on aurait alors raté l'event OnGameStarted.
+        if (_rematchMode) CheckRematchAlreadyStarted();
+#endif
     }
 
     void OnDisable()
@@ -62,10 +85,39 @@ public class LobbyPageUI : MonoBehaviour
         GameSessionManager.OnPlayer1Joined -= OnPlayerInfoChanged;
         GameSessionManager.OnPlayer2Joined -= OnPlayerInfoChanged;
         GameSessionManager.OnBothPlayersReady -= OnBothPlayersReady;
+
+#if WEB_BUILD
+        if (NetworkManager.Instance != null)
+        {
+            NetworkManager.Instance.OnPlayerRemoved -= HandlePlayerRemovedDuringRematch;
+        }
+#endif
     }
 
     private void OnPlayerInfoChanged(string _) => UpdateDisplay();
     private void OnBothPlayersReady() => UpdateDisplay();
+
+#if WEB_BUILD
+    // L'autre joueur a quitté pendant qu'on attendait son « Rejouer ».
+    private void HandlePlayerRemovedDuringRematch(string _)
+    {
+        if (!_rematchMode) return;
+        _opponentLeft = true;
+        if (showDebug) Debug.Log("LobbyPageUI: l'autre joueur a quitté pendant l'attente de rejouer");
+        UpdateDisplay();
+    }
+
+    // Si le serveur a déjà relancé la partie avant que ce lobby ne s'abonne, on rattrape.
+    private void CheckRematchAlreadyStarted()
+    {
+        string status = NetworkManager.Instance?.Room?.State?.status;
+        if (status == "loading" || status == "countdown" || status == "playing")
+        {
+            if (showDebug) Debug.Log($"LobbyPageUI: rematch déjà démarré (status={status}) → LoadScene");
+            OnGameStarted();
+        }
+    }
+#endif
 
     void Start()
     {
@@ -129,18 +181,32 @@ public class LobbyPageUI : MonoBehaviour
         // Bouton start
         if (startGameButton != null)
         {
-            bool canStart = GameSessionManager.Instance.bothPlayersReady;
-            startGameButton.interactable = canStart;
-
-            if (startButtonText != null)
+            if (_rematchMode)
             {
-                if (canStart)
+                // Redémarrage automatique : le bouton reste désactivé et sert d'indicateur d'attente.
+                startGameButton.interactable = false;
+                if (startButtonText != null)
                 {
-                    startButtonText.text = "DÉMARRER LA PARTIE";
+                    startButtonText.text = _opponentLeft
+                        ? "L'autre joueur a quitté la partie"
+                        : "En attente de l'autre joueur…";
                 }
-                else
+            }
+            else
+            {
+                bool canStart = GameSessionManager.Instance.bothPlayersReady;
+                startGameButton.interactable = canStart;
+
+                if (startButtonText != null)
                 {
-                    startButtonText.text = "En attente des joueurs...";
+                    if (canStart)
+                    {
+                        startButtonText.text = "DÉMARRER LA PARTIE";
+                    }
+                    else
+                    {
+                        startButtonText.text = "En attente des joueurs...";
+                    }
                 }
             }
         }
@@ -156,6 +222,7 @@ public class LobbyPageUI : MonoBehaviour
     /// </summary>
     private void OnStartGameClicked()
     {
+        if (_rematchMode) return;
         if (!GameSessionManager.Instance.bothPlayersReady)
         {
             Debug.LogWarning("LobbyPageUI: Les deux joueurs ne sont pas encore prêts");
@@ -215,14 +282,20 @@ public class LobbyPageUI : MonoBehaviour
 
     /// <summary>
     /// Retour au menu. En WEB_BUILD la session vient de l'URL et la connexion Colyseus
-    /// est persistante — on ne la détruit PAS, on navigue juste vers la home pour que le
-    /// joueur puisse consulter « Comment jouer » puis revenir au lobby sans perdre la partie.
+    /// est persistante — on ne la détruit PAS, on navigue juste vers la home. En mode
+    /// rematch, « Retour » annule le rejouer et renvoie au site (page de classement).
     /// </summary>
     public void OnBackButtonClicked()
     {
         if (MenuPageManager.Instance == null) return;
 
 #if WEB_BUILD
+        if (_rematchMode)
+        {
+            if (showDebug) Debug.Log("LobbyPageUI: rematch annulé → retour au site");
+            WebBridge.NotifyQuit(WebBootstrap.SessionId);
+            return;
+        }
         // Pas de ResetSession() : sessionId, room Colyseus, pseudos et bothPlayersReady
         // doivent survivre à un aller-retour dans le menu.
         MenuPageManager.Instance.ShowHomePage();
